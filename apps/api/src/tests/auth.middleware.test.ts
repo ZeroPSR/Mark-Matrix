@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { isRole, type Role } from "@mark-matrix/shared";
 import type { AppEnv } from "../env.js";
 
 const mockGetUser = vi.fn();
