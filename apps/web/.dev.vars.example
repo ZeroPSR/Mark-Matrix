@@ -1,0 +1,2 @@
+# Local overrides for `vite dev`. Copy to `.dev.vars` (never commit it).
+VITE_API_ORIGIN=http://127.0.0.1:8787

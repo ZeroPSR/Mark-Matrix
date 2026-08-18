@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
+    "noEmit": true,
+    "types": ["@cloudflare/vitest-pool-workers", "node"]
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../../packages/shared" }]
+}

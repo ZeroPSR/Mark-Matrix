@@ -1,0 +1,14 @@
+{
+  // Cloudflare Workers config for the Mark-Matrix Hono API.
+  // Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mark-matrix-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": { "ENVIRONMENT": "production" },
+  "environments": {
+    "dev": { "vars": { "ENVIRONMENT": "dev" } }
+  }
+}

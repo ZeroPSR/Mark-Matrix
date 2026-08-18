@@ -1,0 +1,9 @@
+{
+  // Cloudflare Pages config for the React frontend.
+  // Build output is produced by Vite; this file is consumed by @cloudflare/vite-plugin.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mark-matrix-web",
+  "compatibility_date": "2025-09-23",
+  "pages_build_output_dir": "./dist",
+  "observability": { "enabled": true }
+}

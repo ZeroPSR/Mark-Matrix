@@ -1,2 +1,31 @@
-.env
+# Dependencies
+node_modules/
+.pnpm-store/
 
+# Build output
+dist/
+build/
+.wrangler/
+.dev.vars
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.sample
+!.dev.vars.example
+
+# Test
+coverage/

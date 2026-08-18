@@ -1,0 +1,17 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  esbuild: set this to true or false
+
+# Auto-approve native build scripts for known tools (esbuild, workerd).
+# See https://pnpm.io/settings#onlybuiltdependencies
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - "@tailwindcss/oxide"
+  - "@swc/core"
+  - "@biomejs/biome"
+  - "core-js"
+  - "better-sqlite3"
