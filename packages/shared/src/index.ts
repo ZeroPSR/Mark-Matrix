@@ -5,6 +5,8 @@
  * request/response shapes and role names stay in lock-step.
  */
 
+export * from "./auth.js";
+
 export const ROLES = ["admin", "faculty", "student"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -14,6 +16,10 @@ export function isRole(value: unknown): value is Role {
 
 export const API_ROUTES = {
   health: "/health",
+  me: "/api/me",
+  login: "/login",
+  forbidden: "/forbidden",
+  adminUsers: "/api/admin/users",
 } as const;
 
 export interface HealthResponse {
