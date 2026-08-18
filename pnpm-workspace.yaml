@@ -4,6 +4,7 @@ packages:
 
 allowBuilds:
   esbuild: true
+  supabase: true
   workerd: true
 
 # Auto-approve native build scripts for known tools (esbuild, workerd).
