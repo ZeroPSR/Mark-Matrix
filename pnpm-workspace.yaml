@@ -3,7 +3,8 @@ packages:
   - "packages/*"
 
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+  workerd: true
 
 # Auto-approve native build scripts for known tools (esbuild, workerd).
 # See https://pnpm.io/settings#onlybuiltdependencies

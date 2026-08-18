@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test *)",
+      "Bash(git merge *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  },
   "enabledPlugins": {
     "feature-dev@claude-plugins-official": true
   }
