@@ -1,9 +1,43 @@
 # Cycle 1 — Auth, Sessions & RBAC Foundation
 
-**Status:** Approved (pending user review of written spec)
-**Date:** 2026-08-18
+**Status:** Revised — pending re-review
+**Date:** 2026-08-18 (revised 2026-08-18)
 **Cycle:** 1 of 8 (per `.docs/Mark-Matrix-Cycle-Plan.md`)
 **Stack:** React + Vite · Hono on Cloudflare Workers · Supabase (Postgres + Auth + RLS)
+
+---
+
+## Changelog (2026-08-18 revision)
+
+- **Admin bootstrap moved out of migrations.** `admin_bootstrap.sql` previously
+  lived under `supabase/migrations/`, which would have auto-applied via
+  `supabase db push` to ANY environment (including a future production push
+  in Cycle 8). Removed entirely and reworked as `scripts/seed-admin.ts`,
+  a Node/TS seed script using the Supabase Admin API (see "Changelog" `#3`).
+- **RLS subquery replaced by `is_admin()` SECURITY DEFINER helper.**
+  `profiles_select_admin` and the role-check in `profiles_update_own` /
+  `profiles_update_admin` previously queried `public.profiles` from inside
+  policies on `public.profiles` itself. Replaced with a single
+  `public.is_admin()` function marked `SECURITY DEFINER` so it bypasses RLS
+  internally and reads the caller's role safely. The pattern will be reused
+  by every later cycle's RLS policies.
+- **Seed scripts use the Supabase Admin API, not raw SQL.**
+  Verified via web research that direct SQL inserts into `auth.users` require
+  a paired `auth.identities` row (easy to get wrong) and are not recommended
+  by Supabase. Both `admin_bootstrap` and `test_users` are now
+  `scripts/seed-*.ts` scripts that call `supabase.auth.admin.createUser()`
+  with the service-role key — the supported, idempotent path.
+- **Local-dev auth hook is wired in `supabase/config.toml`.** The hook
+  configuration block now lives in `supabase/config.toml` so
+  `supabase start` enables it. Hosted/production projects still need the
+  dashboard (or management API) equivalent; documented in
+  `.docs/cycle-1-setup.md`.
+- **Updated §3.1, §3.3, §3.4, §3.5, §3.6, §7.5, §8, §11** to reflect the
+  above changes. RLS recursion-safety note rewritten to explain the
+  `SECURITY DEFINER` mechanism rather than the previous "bounded to the
+  calling row" reasoning.
+- **Acceptance criteria** gained an explicit check that the admin bootstrap
+  is NOT under `supabase/migrations/` and NOT applied by `supabase db push`.
 
 ---
 
@@ -99,22 +133,35 @@ Three layers with cleanly separated concerns:
 
 ## 3. Database
 
-### 3.1 Migrations
+### 3.1 Migrations and seed files
 
-All migrations live under `supabase/migrations/` and are applied with the
-Supabase CLI (`supabase db push`).
+All schema migrations live under `supabase/migrations/` and are applied
+with the Supabase CLI (`supabase db push`). The admin bootstrap and
+test-user seed files are **NOT** migrations — they live at the repo
+root as TypeScript scripts and are only run explicitly via
+`pnpm db:seed:admin` / `pnpm db:seed:test-users` (see §3.4 / §3.6).
+This ensures `supabase db push` to a fresh environment (e.g. production
+in Cycle 8) does not create a known-password admin account.
 
 ```
 supabase/
-├── config.toml
-├── migrations/
-│   ├── 20260818100000_create_profiles.sql
-│   ├── 20260818100001_profiles_rls.sql
-│   ├── 20260818100002_admin_bootstrap.sql
-│   └── 20260818100003_auth_hook_role_claim.sql
-└── seed/
-    └── test_users.sql
+├── config.toml                   # includes [auth.hook.custom_access_token] (§3.5)
+└── migrations/
+    ├── 20260818100000_create_profiles.sql
+    ├── 20260818100001_profiles_rls.sql
+    └── 20260818100002_auth_hook_role_claim.sql
 ```
+
+The TypeScript seed scripts live at the repo root for convenience:
+
+```
+scripts/
+├── seed-admin.ts       # creates the first admin via Admin API
+└── seed-test-users.ts  # creates test users (admin/faculty/student) for integration tests
+```
+
+Run via `pnpm db:seed:admin` and `pnpm db:seed:test-users` respectively
+(see §7.5).
 
 ### 3.2 `profiles` table
 
@@ -163,7 +210,30 @@ admin endpoint).
 
 ### 3.3 RLS policies
 
+Three pieces: an `is_admin()` helper, the policies on `profiles`, and the
+admin role-check pattern that all later cycles will reuse.
+
 ```sql
+-- Helper: is the calling user an admin? SECURITY DEFINER so this runs as
+-- the function owner (which bypasses RLS) and reads the caller's role
+-- without recursing into the policies on profiles. Used by every RLS
+-- policy that needs to check the caller's role.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where user_id = auth.uid() and role = 'admin'
+  );
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
 alter table public.profiles enable row level security;
 
 -- Self SELECT: a user can read their own row.
@@ -176,13 +246,7 @@ create policy "profiles_select_own"
 create policy "profiles_select_admin"
   on public.profiles for select
   to authenticated
-  using (
-    (select auth.uid()) is not null
-    and exists (
-      select 1 from public.profiles p
-      where p.user_id = (select auth.uid()) and p.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 -- Self UPDATE: a user can update their own profile, but NOT the role column.
 -- The WITH CHECK compares the incoming role against the existing row,
@@ -200,59 +264,115 @@ create policy "profiles_update_own"
 create policy "profiles_update_admin"
   on public.profiles for update
   to authenticated
-  using (
-    exists (
-      select 1 from public.profiles p
-      where p.user_id = (select auth.uid()) and p.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 -- No INSERT policy: profiles are created by the trigger only.
 -- No DELETE policy: profile deletion cascades from auth.users.
 ```
 
-**Recursion safety:** policies reference `auth.uid()` and the `profiles`
-table inside subqueries. The `select role from profiles where user_id = auth.uid()`
-subquery is bounded to the calling row, so no infinite recursion occurs.
+**Recursion safety:** policies that need the caller's role call
+`public.is_admin()`. The function is marked `SECURITY DEFINER`, which
+runs it as the function owner (the `postgres` role) and bypasses RLS on
+the `profiles` table. This means the role lookup reads the row directly
+without triggering the policies on `profiles` and without producing
+infinite recursion. The `search_path` is pinned to `public` to prevent
+search-path attacks. The function is `STABLE` (not `VOLATILE`) so the
+query planner can cache the result within a single statement.
 
-### 3.4 Admin bootstrap
+This `is_admin()` pattern is the canonical role-check for every RLS
+policy in this codebase. Later cycles will add `is_faculty()`,
+`is_faculty_of(course_id)`, etc. following the same template.
 
-`supabase/migrations/20260818100002_admin_bootstrap.sql` is **idempotent**
-and **local-only**. It inserts one admin user if no admin exists. The
-operator edits the `admin_email` constant before running cycle 1 locally.
+### 3.4 Admin bootstrap (seed-only)
 
-```sql
-do $$
-declare
-  admin_email text := 'admin@mark-matrix.local';
-  admin_id    uuid;
-begin
-  if exists (select 1 from public.profiles where role = 'admin') then
+The admin bootstrap is **not** a migration. It lives at
+`scripts/seed-admin.ts` and is run explicitly via `pnpm db:seed:admin`
+(see §7.5). It uses the Supabase Admin API, which is the supported path
+for creating users programmatically — direct SQL inserts into
+`auth.users` are fragile (they require a paired `auth.identities` row and
+bypass GoTrue's validation; the Admin API handles both correctly).
+
+```ts
+// scripts/seed-admin.ts
+import { createClient } from "@supabase/supabase-js";
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: ".env" });
+loadEnv({ path: "apps/api/.dev.vars", quiet: true });
+
+const url = process.env["SUPABASE_URL"];
+const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+if (!url || !serviceKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  process.exit(1);
+}
+
+const ADMIN_EMAIL = process.env["SEED_ADMIN_EMAIL"] ?? "admin@mark-matrix.local";
+const ADMIN_PASSWORD = process.env["SEED_ADMIN_PASSWORD"] ?? "changeme";
+
+const supabase = createClient(url, serviceKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+async function main(): Promise<void> {
+  // Idempotent: skip if any admin already exists.
+  const { data: existing, error: listErr } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("role", "admin")
+    .limit(1);
+  if (listErr) throw new Error(`profile check failed: ${listErr.message}`);
+  if (existing && existing.length > 0) {
+    console.log("Admin already exists — skipping bootstrap.");
     return;
-  end if;
+  }
 
-  insert into auth.users (instance_id, id, aud, role, email, encrypted_password,
-                          email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-                          created_at, updated_at, confirmation_token,
-                          email_change, email_change_token_new, recovery_token)
-  values (00000000-0000-0000-0000-000000000000,
-          gen_random_uuid(), 'authenticated', 'authenticated',
-          admin_email, crypt('changeme', gen_salt('bf')), now(),
-          '{"provider":"email","providers":["email"]}'::jsonb,
-          '{"name":"Admin"}'::jsonb, now(), now(), '', '', '', '')
-  returning id into admin_id;
+  // Create the auth user via the Admin API. This inserts both
+  // auth.users and auth.identities rows correctly.
+  const { data, error } = await supabase.auth.admin.createUser({
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
+    email_confirm: true,
+    user_metadata: { name: "Admin" },
+  });
+  if (error || !data.user) {
+    throw new Error(`admin createUser failed: ${error?.message ?? "no user"}`);
+  }
 
-  insert into public.profiles (user_id, name, role)
-  values (admin_id, 'Admin', 'admin')
-  on conflict do nothing;
-end $$;
+  // Promote to admin. The trigger on auth.users already created a profile
+  // row with role='student'; update it.
+  const { error: updateErr } = await supabase
+    .from("profiles")
+    .update({ role: "admin", name: "Admin" })
+    .eq("user_id", data.user.id);
+  if (updateErr) {
+    throw new Error(`profile promote failed: ${updateErr.message}`);
+  }
+
+  console.log(`Admin user created: ${ADMIN_EMAIL}`);
+  console.log("Sign in and change the password immediately.");
+}
+
+main().catch((err: unknown) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});
 ```
 
-The README runbook instructs: edit `admin_email`, run `supabase db reset`,
-then sign in with the bootstrap password (`changeme`) and change it
-immediately via the Supabase dashboard or the auth admin API.
+The operator runbook (`.docs/cycle-1-setup.md`) instructs: run
+`pnpm db:seed:admin` after `supabase db push`, sign in with the
+bootstrap password (override `SEED_ADMIN_PASSWORD` env var, or use the
+default `changeme`), and change it immediately via the Supabase
+dashboard or the auth admin API.
 
 ### 3.5 Auth hook: `custom_access_token`
+
+The hook is added via a migration that defines the `plpgsql` function,
+and is then wired up for local dev via `supabase/config.toml`. Hosted
+projects (production, staging) wire the same hook via the Supabase
+dashboard.
+
+**Migration — `20260818100002_auth_hook_role_claim.sql`:**
 
 ```sql
 create or replace function public.custom_access_token_hook(event jsonb)
@@ -284,18 +404,107 @@ grant execute on function public.custom_access_token_hook to supabase_auth_admin
 revoke execute on function public.custom_access_token_hook from authenticated, anon, public;
 ```
 
-This hook is wired in the Supabase dashboard under Auth → Hooks.
-Configuration is documented in the operator runbook.
+**`supabase/config.toml`** — local-dev hook wiring:
+
+```toml
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+```
+
+This block is read by `supabase start` and enables the hook on the
+local Postgres instance. The `uri` schema points at the public DB
+function above.
+
+**Hosted projects** — production / staging need the dashboard equiv­
+alent (Auth → Hooks → Custom Access Token → select
+`public.custom_access_token_hook`), or the management API equivalent.
+The operator runbook (`.docs/cycle-1-setup.md`) documents this.
 
 ### 3.6 Test-user seed
 
-`supabase/seed/test_users.sql` (separate from migrations) is loaded by
-integration tests via `supabase db reset --seed`. It creates three rows
-(idempotent):
+`scripts/seed-test-users.ts` (separate from migrations) is run via
+`pnpm db:seed:test-users` (see §7.5). It creates three users via the
+Supabase Admin API — idempotent (checks for existing emails and skips
+those that already exist):
 
 - `admin.test@mark-matrix.local` / `TestPass!1` / role `admin`
 - `faculty.test@mark-matrix.local` / `TestPass!1` / role `faculty`
 - `student.test@mark-matrix.local` / `TestPass!1` / role `student`
+
+```ts
+// scripts/seed-test-users.ts
+import { createClient } from "@supabase/supabase-js";
+import { config as loadEnv } from "dotenv";
+
+loadEnv({ path: ".env" });
+loadEnv({ path: "apps/api/.dev.vars", quiet: true });
+
+const url = process.env["SUPABASE_URL"];
+const serviceKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+if (!url || !serviceKey) {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  process.exit(1);
+}
+
+const supabase = createClient(url, serviceKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+const TEST_USERS = [
+  { email: "admin.test@mark-matrix.local",   password: "TestPass!1", name: "Admin Test",   role: "admin" },
+  { email: "faculty.test@mark-matrix.local", password: "TestPass!1", name: "Faculty Test", role: "faculty" },
+  { email: "student.test@mark-matrix.local", password: "TestPass!1", name: "Student Test", role: "student" },
+] as const;
+
+async function main(): Promise<void> {
+  for (const u of TEST_USERS) {
+    // 1. Create or fetch the auth user.
+    const { data: list, error: listErr } = await supabase.auth.admin.listUsers();
+    if (listErr) throw new Error(`listUsers failed: ${listErr.message}`);
+    const existing = list.users.find((x) => x.email === u.email);
+
+    let userId: string;
+    if (existing) {
+      userId = existing.id;
+      console.log(`User exists, skipping: ${u.email}`);
+    } else {
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: u.email,
+        password: u.password,
+        email_confirm: true,
+        user_metadata: { name: u.name },
+      });
+      if (error || !data.user) {
+        throw new Error(`createUser failed for ${u.email}: ${error?.message ?? "no user"}`);
+      }
+      userId = data.user.id;
+      console.log(`Created user: ${u.email}`);
+    }
+
+    // 2. Promote to the desired role. The trigger creates a profile row
+    // with role='student' on signup; we update it to the test role.
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ role: u.role, name: u.name })
+      .eq("user_id", userId);
+    if (updateErr) {
+      throw new Error(`profile update failed for ${u.email}: ${updateErr.message}`);
+    }
+  }
+  console.log("Test users seeded.");
+}
+
+main().catch((err: unknown) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});
+```
+
+Both seed scripts (§3.4 and §3.6) use the Admin API rather than
+`INSERT INTO auth.users` because direct SQL inserts require a paired
+`auth.identities` row (easy to get wrong) and bypass GoTrue's
+validation. The Admin API is the supported, idempotent path.
 
 ---
 
@@ -793,14 +1002,20 @@ nav items match the role.
 ```jsonc
 // root package.json
 "scripts": {
-  "test":            "pnpm -r test",
-  "test:integration":"SUPABASE_TEST_URL=... SUPABASE_TEST_SERVICE_ROLE_KEY=... pnpm -r test",
-  "test:rls":        "SUPABASE_TEST_URL=... SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test",
-  "db:reset":        "supabase db reset",
-  "db:push":         "supabase db push",
-  "db:seed:test":    "supabase db reset --seed supabase/seed/test_users.sql"
+  "test":             "pnpm -r test",
+  "test:integration": "SUPABASE_TEST_URL=... SUPABASE_TEST_SERVICE_ROLE_KEY=... pnpm -r test",
+  "test:rls":         "SUPABASE_TEST_URL=... SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test",
+  "db:reset":         "supabase db reset",
+  "db:push":          "supabase db push",
+  "db:start":         "supabase start",
+  "db:seed:admin":    "tsx scripts/seed-admin.ts",
+  "db:seed:test-users": "tsx scripts/seed-test-users.ts"
 }
 ```
+
+`db:push` applies only the schema migrations under `supabase/migrations/`
+— **never** the admin bootstrap or test-user seed scripts. Those are
+seed-only and run explicitly via `db:seed:admin` / `db:seed:test-users`.
 
 ---
 
@@ -847,8 +1062,24 @@ nav items match the role.
 
 ### Migrations
 
-`supabase/config.toml` plus four migrations and one seed file under
-`supabase/migrations/` and `supabase/seed/`.
+`supabase/config.toml` (with `[auth.hook.custom_access_token]` block per
+§3.5) plus three migrations under `supabase/migrations/`:
+
+- `20260818100000_create_profiles.sql`
+- `20260818100001_profiles_rls.sql`
+- `20260818100002_auth_hook_role_claim.sql`
+
+### Seed scripts (NOT migrations)
+
+Live at the repo root, run via `pnpm db:seed:*`:
+
+- `scripts/seed-admin.ts` — creates the first admin via the Admin API
+- `scripts/seed-test-users.ts` — creates admin/faculty/student test users
+  for integration tests
+
+These are intentionally excluded from `supabase/migrations/` so that
+`supabase db push` to a fresh environment (e.g. production in Cycle 8)
+does not create a known-password admin account.
 
 ### Configs & docs
 
@@ -867,8 +1098,9 @@ nav items match the role.
 Each step is independently testable; later steps build on earlier ones.
 
 1. **Infra prep** — add `supabase` CLI dev-dep, `supabase config.toml`, root scripts.
-2. **Migrations** — write the four SQL files + `seed/test_users.sql`. Manually
-   verify with `supabase db reset` locally.
+2. **Migrations** — write the three SQL files in `supabase/migrations/`
+   and `supabase/config.toml` (with the auth-hook block). Manually verify
+   with `supabase db push` against a local `supabase start` instance.
 3. **Shared types/constants** — extend `API_ROUTES`, add `auth.ts` exports.
 4. **API: `env.ts` + `lib/supabase.ts` factory** — type-safety foundation.
 5. **API: `supabaseAuth` middleware + `/api/me`** — write tests **first** (TDD),
@@ -897,14 +1129,18 @@ implementation.
 | Role claim staleness (admin promotes a user; role not visible until next token refresh) | Acceptable for Cycle 1: role changes are admin-only and rare. Documented in `.docs/cycle-1-setup.md`. |
 | JWT in localStorage (XSS exposure) | Acceptable for this scaffold: no SSR, no third-party scripts. Cycle 8 will revisit httpOnly cookies. |
 | Service-role key in API bundle | Service-role key never referenced from the web bundle. The API only references it where needed (none in Cycle 1). |
-| RLS recursion in admin policies | All role lookups use subqueries bounded to the calling row. Documented in §3.3. |
+| RLS recursion in admin policies | All role lookups go through `public.is_admin()` — a `SECURITY DEFINER` function that bypasses RLS internally. Documented in §3.3. |
 | `noUncheckedIndexedAccess` strict TS | `header.slice(7)` returns `string`; type-narrowed in `supabaseAuth`. No index access in hot paths. |
 
 ---
 
 ## 11. Acceptance Criteria
 
-- [ ] `supabase db push` applies all four migrations cleanly.
+- [ ] `supabase db push` applies the three migrations cleanly (no `admin_bootstrap`
+      file in `supabase/migrations/`).
+- [ ] The admin bootstrap file is **NOT** under `supabase/migrations/` and is
+      **not** applied by `supabase db push`. It lives only as
+      `scripts/seed-admin.ts` and is run via `pnpm db:seed:admin`.
 - [ ] An admin user can sign in via the React login page and sees the admin
       nav including "Users".
 - [ ] A faculty user can sign in and sees the faculty nav including "My Courses".
@@ -916,3 +1152,6 @@ implementation.
 - [ ] Integration tests pass when test creds are supplied (`pnpm test:integration`).
 - [ ] CI passes on push when no test creds are configured (integration tests skipped).
 - [ ] `pnpm lint && pnpm typecheck` passes.
+- [ ] Manual smoke: sign in via `supabase.auth.signInWithPassword()` as each
+      seeded user (admin/faculty/student) and confirm the JWT contains
+      `app_metadata.role` set correctly by the auth hook.
