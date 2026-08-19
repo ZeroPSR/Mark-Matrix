@@ -24,8 +24,8 @@
     "db:diff": "supabase db diff",
     "db:seed:admin": "tsx scripts/seed-admin.ts",
     "db:seed:test-users": "tsx scripts/seed-test-users.ts",
-    "test:integration": "cross-env SUPABASE_TEST_URL= SUPABASE_TEST_SERVICE_ROLE_KEY= pnpm -r test",
-    "test:rls": "cross-env SUPABASE_TEST_URL= SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test"
+    "test:integration": "pnpm -r test",
+    "test:rls": "cross-env SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -33,6 +33,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "cross-env": "^7.0.3",
+    "dotenv": "^16.4.0",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.5",

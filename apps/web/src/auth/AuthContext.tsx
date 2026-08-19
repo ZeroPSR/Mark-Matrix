@@ -1,6 +1,4 @@
-import {
-  createContext, useContext, useEffect, useMemo, useState, type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { isRole, type Role } from "@mark-matrix/shared";
 import { supabase } from "../lib/supabase.js";
 
@@ -21,14 +19,21 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      const u = data.session?.user;
-      setUserId(u?.id ?? null);
-      const r = (u?.app_metadata as { role?: unknown } | undefined)?.role;
-      setRole(isRole(r) ? r : null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const u = data.session?.user;
+        setUserId(u?.id ?? null);
+        const r = (u?.app_metadata as { role?: unknown } | undefined)?.role;
+        setRole(isRole(r) ? r : null);
+        setLoading(false);
+      })
+      .catch(() => {
+        // A network failure must not leave the app stuck in `loading`.
+        if (cancelled) return;
+        setLoading(false);
+      });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       const u = session?.user;
@@ -45,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   const value = useMemo<AuthState>(
     () => ({
-      userId, role, loading,
+      userId,
+      role,
+      loading,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: error?.message ?? null };

@@ -17,10 +17,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: [
-      "apps/web/**/*.{ts,tsx}",
-      "apps/web/src/**/*.{ts,tsx}",
-    ],
+    files: ["apps/web/**/*.{ts,tsx}", "apps/web/src/**/*.{ts,tsx}"],
     plugins: {
       react: reactPlugin,
       "react-hooks": reactHooks,
@@ -50,5 +47,10 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": "warn",
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
     },
+  },
+  {
+    // Operator-facing CLI scripts log freely — console.log is fine here.
+    files: ["scripts/**/*.ts"],
+    rules: { "no-console": "off" },
   },
 );

@@ -7,7 +7,7 @@ allowBuilds:
   supabase: true
   workerd: true
 
-# Auto-approve native build scripts for known tools (esbuild, workerd).
+# Auto-approve native build scripts for known tools (esbuild, supabase, workerd).
 # See https://pnpm.io/settings#onlybuiltdependencies
 onlyBuiltDependencies:
   - esbuild

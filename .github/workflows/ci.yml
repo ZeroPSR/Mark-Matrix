@@ -35,7 +35,7 @@ jobs:
         run: pnpm test
 
       - name: Integration tests (skipped without creds)
-        if: ${{ env.SUPABASE_TEST_URL != '' }}
+        if: ${{ secrets.SUPABASE_TEST_URL != '' }}
         run: pnpm test:integration
         env:
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}

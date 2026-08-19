@@ -2,41 +2,64 @@
 
 ## One-time setup
 
-1. Install the Supabase CLI (if not already):
+1. Install workspace dependencies (includes the Supabase CLI):
+
    ```bash
    pnpm install
    ```
 
 2. Start a local Supabase instance:
+
    ```bash
    pnpm db:start
    ```
+
    Wait for the "API URL", "anon key", and "service_role key" lines. Copy them.
 
-3. Update `.env` at the repo root:
+3. Create `.env` at the repo root (none ships by default):
+
    ```bash
    SUPABASE_URL=http://127.0.0.1:54321
    SUPABASE_ANON_KEY=<from pnpm db:status>
    SUPABASE_SERVICE_ROLE_KEY=<from pnpm db:status>
    ```
 
-4. Update `apps/web/.env`:
+   Pull the values from `pnpm db:status` output, then either keep them in
+   `.env` (the seed/check scripts auto-load it) or export into the shell:
+
+   ```bash
+   set -a; source .env; set +a
+   ```
+
+4. Create `apps/web/.env` from the example template (no file ships by default):
+
+   ```bash
+   cp apps/web/.env.example apps/web/.env
+   ```
+
+   Then edit `apps/web/.env`:
+
    ```bash
    VITE_SUPABASE_URL=http://127.0.0.1:54321
    VITE_SUPABASE_ANON_KEY=<from pnpm db:status>
    ```
 
 5. Apply migrations:
+
    ```bash
    pnpm db:reset
    ```
+
    This applies the three migrations: `create_profiles`, `profiles_rls`, `auth_hook_role_claim`.
 
 6. Seed the first admin:
+
    ```bash
    pnpm db:seed:admin
    ```
+
    Defaults to `admin@mark-matrix.local` / `changeme`. Override via env:
+
    ```bash
    SEED_ADMIN_EMAIL=admin@example.com SEED_ADMIN_PASSWORD='strong-pw' pnpm db:seed:admin
    ```
@@ -51,6 +74,7 @@ bootstrap is **not** a migration — it never runs automatically.
 For hosted Supabase:
 
 1. Push the schema:
+
    ```bash
    pnpm db:push
    ```

@@ -7,6 +7,7 @@ pnpm test
 ```
 
 Covers:
+
 - `supabaseAuth` middleware (valid / invalid / missing / wrong-role)
 - `requireRole` factory (allow / deny)
 - `GET /api/admin/users` → 403 for non-admin
@@ -26,6 +27,14 @@ pnpm db:reset
 pnpm db:seed:test-users
 ```
 
+Create `apps/web/.env` first if you haven't (copy `apps/web/.env.example`),
+then export the values into your shell — `SUPABASE_SERVICE_ROLE_KEY` is
+populated in the repo-root `.env` by Step 3 of `.docs/cycle-1-setup.md`:
+
+```bash
+set -a; source .env; set +a
+```
+
 Then:
 
 ```bash
@@ -37,6 +46,7 @@ pnpm test:integration
 (Run `pnpm db:status` to get the URLs and keys.)
 
 These tests cover:
+
 - `admin.test`, `faculty.test`, `student.test` all sign in successfully
 - Each gets the correct `app_metadata.role` from the auth hook
 
@@ -52,6 +62,7 @@ pnpm test:rls
 ```
 
 Covers:
+
 - A student can read their own profile row
 - A student cannot read another student's profile row
 - A student cannot promote themselves to admin
