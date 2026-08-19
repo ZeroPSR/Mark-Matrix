@@ -1,28 +1,18 @@
 import { Hono } from "hono";
-import type { HealthResponse } from "@mark-matrix/shared";
+import { API_ROUTES } from "@mark-matrix/shared";
+import { supabaseAuth } from "./middleware/auth.js";
+import { requireRole } from "./middleware/requireRole.js";
+import { adminUsersRoute } from "./routes/admin/users.js";
+import type { AppEnv } from "./env.js";
 
-/**
- * Bindings available to the Worker.
- *
- * SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY live as
- * Wrangler secrets (`wrangler secret put <NAME>`) in production and as
- * `.dev.vars` entries locally. ENVIRONMENT is a non-secret var.
- */
-export interface Env {
-  ENVIRONMENT: string;
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-}
+const app = new Hono<AppEnv>();
 
-const app = new Hono<{ Bindings: Env }>();
+app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
-app.get("/health", (c) => {
-  const body: HealthResponse = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  };
-  return c.json(body);
-});
+app.use("/api/*", supabaseAuth);
+app.get(API_ROUTES.me, (c) => c.json({ userId: c.get("userId"), role: c.get("role") }));
+
+app.use("/api/admin/*", requireRole("admin"));
+app.route(API_ROUTES.adminUsers, adminUsersRoute);
 
 export default app;
