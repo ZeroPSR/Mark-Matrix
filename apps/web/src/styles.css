@@ -1,3 +1,83 @@
 :root { font-family: system-ui, sans-serif; }
 body { margin: 0; padding: 2rem; background: #fafafa; color: #111; }
 .app { max-width: 40rem; margin: 0 auto; }
+
+/* App shell */
+.app-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 100vh;
+}
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #1f2937;
+  color: #f9fafb;
+  border-bottom: 1px solid #111827;
+}
+.app-shell__header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.app-shell__role {
+  margin-left: auto;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid #4b5563;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+.app-shell__nav {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: #374151;
+}
+.app-shell__nav-item {
+  color: #e5e7eb;
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+.app-shell__nav-item.is-active,
+.app-shell__nav-item:hover {
+  background: #4b5563;
+}
+.app-shell__main {
+  padding: 1.5rem;
+}
+
+/* Login */
+.app-login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+.app-login__form {
+  display: grid;
+  gap: 0.5rem;
+  width: 320px;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+}
+.app-login__form h1 { margin: 0 0 0.5rem 0; }
+.app-login__form label { font-size: 0.875rem; color: #374151; }
+.app-login__form input { padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.25rem; }
+.app-login__form button {
+  padding: 0.5rem;
+  background: #1f2937;
+  color: #f9fafb;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+.app-login__form button:disabled { opacity: 0.6; cursor: progress; }
+.app-login__error { color: #b91c1c; margin: 0; font-size: 0.875rem; }
+
+/* States */
+.app-loading { padding: 2rem; text-align: center; color: #6b7280; }
+.app-error { padding: 2rem; text-align: center; color: #6b7280; }

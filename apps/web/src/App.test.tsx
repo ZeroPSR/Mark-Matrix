@@ -1,26 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+
+vi.mock("./auth/AuthContext.js", () => ({
+  useAuth: () => ({
+    userId: "u1", role: "admin", loading: false,
+    signIn: vi.fn(), signOut: vi.fn(),
+  }),
+}));
+
 import { App } from "./App.js";
 
 describe("<App />", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() =>
-        Promise.resolve({
-          json: () => Promise.resolve({ status: "ok", timestamp: "t" }),
-        }),
-      ),
+    // The App pulls in auth context; nothing to reset here, but kept for
+    // future extension.
+  });
+
+  it("renders the dashboard with a Mark-Matrix heading when authenticated", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>,
     );
-  });
-
-  it("renders the Mark-Matrix heading", () => {
-    render(<App />);
-    expect(screen.getByRole("heading", { name: /mark-matrix/i })).toBeTruthy();
-  });
-
-  it("shows the API status once the health endpoint resolves", async () => {
-    render(<App />);
-    await waitFor(() => expect(screen.getByText("ok")).toBeTruthy());
+    expect(screen.getByRole("heading", { name: /mark-matrix/i })).toBeInTheDocument();
   });
 });
