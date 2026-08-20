@@ -42,3 +42,5 @@ export const DATA_LEAVES = [
   "score/sgpa",
   "score/cgpa",
 ] as const;
+
+export * from "./routes.js";
