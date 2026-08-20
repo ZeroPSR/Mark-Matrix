@@ -22,6 +22,7 @@ const TEST_USERS = [
 ] as const;
 
 async function main(): Promise<void> {
+  const userIds: Record<string, string> = {};
   for (const u of TEST_USERS) {
     const { data: list, error: listErr } = await supabase.auth.admin.listUsers();
     if (listErr) throw new Error(`listUsers failed: ${listErr.message}`);
@@ -52,6 +53,21 @@ async function main(): Promise<void> {
     if (updateErr) {
       throw new Error(`profile update failed for ${u.email}: ${updateErr.message}`);
     }
+
+    userIds[u.email.split("@")[0]!] = userId;
+  }
+
+  const satellites = [
+    { userId: userIds["admin.test"],   table: "admin_profiles",   row: { employee_code: "TEST-ADMIN-001" } },
+    { userId: userIds["faculty.test"], table: "faculty_profiles", row: { employee_code: "TEST-FAC-001", department: "CS", designation: "Lecturer" } },
+    { userId: userIds["student.test"], table: "student_profiles", row: { roll_number: "TEST-23BCA001", admission_year: 2023 } },
+  ] as const;
+
+  for (const s of satellites) {
+    const { error } = await supabase
+      .from(s.table)
+      .upsert({ user_id: s.userId, ...s.row }, { onConflict: "user_id" });
+    if (error) throw new Error(`satellite upsert failed: ${error.message}`);
   }
   console.log("Test users seeded.");
 }
