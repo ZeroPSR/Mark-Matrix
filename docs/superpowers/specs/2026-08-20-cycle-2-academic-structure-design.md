@@ -399,6 +399,7 @@ data* (marks, attendance) in later cycles, not for managing the entities.
 | `POST` | `/api/admin/enrollments/bulk` | CSV → per-row report |
 | `GET` `POST` | `/api/admin/students` · `/faculty` · `/admins` | satellite CRUD; `GET` joins `profiles` for `name` |
 | `PATCH` `DELETE` | `/api/admin/students/:userId` · `/faculty/:userId` · `/admins/:userId` | `DELETE` is required by the promotion/demotion flow in §4.1 |
+| `PATCH` | `/api/admin/users/:userId` | sets `profiles.role` and `name`; extends cycle 1's `routes/admin/users.ts`. The **only** way to make someone faculty or admin |
 | `GET` | `/api/faculty/courses` | RLS does the filtering |
 | `GET` | `/api/student/enrollment` | enrollment + batch/program/sem context |
 
@@ -451,6 +452,35 @@ A malformed row never fails the batch. `row` is the 1-based line number in the
 original file including the header, so it maps to what the admin sees in a
 spreadsheet.
 
+### 5.3 Role and satellite lifecycle
+
+Satellite rows are **never auto-created** — not at enrollment, not at
+assignment. `roll_number` and `employee_code` are `NOT NULL` and cannot be
+invented, so a satellite row always means a fully-identified person. This makes
+"exists" and "enrollable" the same state, which is what lets bulk CSV enroll
+match on roll number without a partial-record fallback.
+
+Cycle 1's `handle_new_user` trigger hardcodes `role = 'student'`, so every user
+begins as a student. The order of operations is forced by the two triggers in
+§3.1:
+
+| Goal | Sequence |
+|---|---|
+| Identify a student | `POST /api/admin/students { userId, rollNumber, admissionYear }` |
+| Promote to faculty | `PATCH /api/admin/users/:userId { role: "faculty" }` → `POST /api/admin/faculty { userId, employeeCode, … }` |
+| Demote / change role with a satellite present | `DELETE /api/admin/{role}/:userId` → `PATCH /api/admin/users/:userId` → `POST` the new satellite |
+
+The middle row is why `PATCH /api/admin/users/:userId` must exist: without it,
+`profiles.role` can never become `faculty`, `assert_profile_role('faculty')`
+rejects every `faculty_profiles` insert, and `faculty_assignments` is
+permanently unpopulated. The third row is why the satellites expose `DELETE` —
+`block_role_change_with_satellite()` rejects the `PATCH` otherwise, with the
+`409` mapping from §5.1.
+
+Bootstrap remains outside the API: `scripts/seed-admin.ts` promotes the first
+admin using the service-role key, since no admin exists yet to authorize the
+`PATCH`.
+
 ---
 
 ## 6. Code layout
@@ -475,6 +505,7 @@ spreadsheet.
 | `routes/admin/enrollments.ts` | single + `DELETE` |
 | `routes/admin/bulkEnroll.ts` | §5.2 |
 | `routes/admin/roleProfiles.ts` | the three satellite resources |
+| `routes/admin/users.ts` | **extended** — cycle 1's `GET` gains `PATCH /:userId` for `role`/`name` (§5.3) |
 | `routes/faculty/courses.ts` | |
 | `routes/student/enrollment.ts` | |
 | `index.ts` | wiring + the two new `requireRole` guards |
@@ -491,6 +522,7 @@ out longhand rather than bent to fit it.
 | `lib/api.ts` | fetch wrapper; attaches the Supabase access token, base `VITE_API_ORIGIN`, throws typed errors |
 | `lib/useResource.ts` | small `useState`/`useEffect` hook — no react-query, no axios |
 | `pages/admin/AcademicStructurePage.tsx` | drill-down master-detail: batches → programs → semesters → courses |
+| `pages/admin/UsersPage.tsx` | **replaces `UsersPlaceholder`** — lists users, changes role, creates/edits/deletes the role satellite. Without this the UI cannot produce a faculty member, so assignment has nobody to assign |
 | `pages/admin/components/EntityPanel.tsx` | one reusable column: list + inline create/edit form + delete |
 | `pages/admin/AssignmentsPage.tsx` | pick course, pick faculty, list/remove |
 | `pages/admin/EnrollmentsPage.tsx` | single enroll + CSV upload |
@@ -580,3 +612,7 @@ Deferred deliberately, listed so a later cycle does not assume they exist:
    assigned to it.
 6. Deleting a parent that still has children returns `409` with a message
    naming what blocks it, and the UI surfaces that message.
+7. An admin can take a freshly signed-up user all the way to teaching a course
+   — promote to faculty, create the faculty profile, assign a course — using
+   only the API/UI. No direct database access or service-role script is needed
+   beyond the initial admin bootstrap.
