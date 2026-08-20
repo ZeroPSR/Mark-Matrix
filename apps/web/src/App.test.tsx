@@ -9,6 +9,20 @@ vi.mock("./auth/AuthContext.js", () => ({
   }),
 }));
 
+// Pages imported by <App /> transitively import api.ts -> supabase.ts, whose
+// createClient() call initializes the realtime client and demands a global
+// WebSocket. happy-dom does not provide one, so stub the supabase module.
+vi.mock("./lib/supabase.js", () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
+    },
+  },
+}));
+
 import { App } from "./App.js";
 
 describe("<App />", () => {

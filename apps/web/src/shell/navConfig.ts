@@ -7,8 +7,11 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { label: "Dashboard",  to: "/",                  roles: ["admin", "faculty", "student"] },
-  { label: "Users",      to: "/admin/users",       roles: ["admin"] },
-  { label: "My Courses", to: "/faculty/courses",   roles: ["faculty"] },
-  { label: "My Results", to: "/student/results",   roles: ["student"] },
+  { label: "Dashboard",    to: "/",                       roles: ["admin", "faculty", "student"] },
+  { label: "Users",        to: "/admin/users",            roles: ["admin"] },
+  { label: "Academic",     to: "/admin/academic",         roles: ["admin"] },
+  { label: "Assignments",  to: "/admin/assignments",      roles: ["admin"] },
+  { label: "Enrollments",  to: "/admin/enrollments",      roles: ["admin"] },
+  { label: "My Courses",   to: "/faculty/courses",        roles: ["faculty"] },
+  { label: "My Results",   to: "/student/results",        roles: ["student"] },
 ] as const;

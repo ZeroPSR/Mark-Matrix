@@ -81,3 +81,54 @@ body { margin: 0; padding: 2rem; background: #fafafa; color: #111; }
 /* States */
 .app-loading { padding: 2rem; text-align: center; color: #6b7280; }
 .app-error { padding: 2rem; text-align: center; color: #6b7280; }
+
+/* Admin — academic structure */
+.academic-page__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(8rem, 1fr)) 2fr;
+  gap: 1rem;
+}
+.academic-page__col {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+.academic-page__col--wide { grid-column: span 1; }
+.academic-page__col h2 { margin-top: 0; font-size: 1rem; }
+.academic-page__col ul { list-style: none; padding: 0; margin: 0; }
+.academic-page__col button.active { font-weight: bold; background: #1f2937; color: #f9fafb; }
+
+/* Admin — users */
+.users-page__error { color: #b91c1c; }
+
+/* Admin — assignments */
+.assignments-page__form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Admin — CSV enroll upload */
+.csv-enroll__preview,
+.csv-enroll__report {
+  margin: 0.5rem 0;
+}
+
+/* Admin — enrollments */
+.enrollments-page__single,
+.enrollments-page__bulk {
+  margin-bottom: 1rem;
+}
+
+/* Faculty — courses */
+.faculty-courses { padding: 0; }
+
+/* Reusable entity panel */
+.entity-panel__title { margin-top: 0; }
+.entity-panel__form { display: grid; gap: 0.5rem; margin-bottom: 1rem; }
+.entity-panel__field { display: grid; gap: 0.25rem; font-size: 0.875rem; }
+.entity-panel__error { color: #b91c1c; }
+.entity-panel__table { width: 100%; border-collapse: collapse; }
+.entity-panel__table th,
+.entity-panel__table td { padding: 0.5rem; border-bottom: 1px solid #e5e7eb; text-align: left; }

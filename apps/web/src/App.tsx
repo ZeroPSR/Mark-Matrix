@@ -5,8 +5,11 @@ import { LoginPage } from "./pages/LoginPage.js";
 import { NotFoundPage } from "./pages/NotFoundPage.js";
 import { ForbiddenPage } from "./pages/ForbiddenPage.js";
 import { DashboardPlaceholder } from "./pages/DashboardPlaceholder.js";
-import { UsersPlaceholder } from "./pages/admin/UsersPlaceholder.js";
-import { FacultyPlaceholder } from "./pages/faculty/FacultyPlaceholder.js";
+import { UsersPage } from "./pages/admin/UsersPage.js";
+import { AcademicStructurePage } from "./pages/admin/AcademicStructurePage.js";
+import { AssignmentsPage } from "./pages/admin/AssignmentsPage.js";
+import { EnrollmentsPage } from "./pages/admin/EnrollmentsPage.js";
+import { FacultyCoursesPage } from "./pages/faculty/FacultyCoursesPage.js";
 import { StudentPlaceholder } from "./pages/student/StudentPlaceholder.js";
 
 export function App(): JSX.Element {
@@ -25,7 +28,31 @@ export function App(): JSX.Element {
           path="admin/users"
           element={
             <ProtectedRoute roles={["admin"]}>
-              <UsersPlaceholder />
+              <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/academic"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AcademicStructurePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/assignments"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AssignmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/enrollments"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <EnrollmentsPage />
             </ProtectedRoute>
           }
         />
@@ -33,7 +60,7 @@ export function App(): JSX.Element {
           path="faculty/courses"
           element={
             <ProtectedRoute roles={["faculty"]}>
-              <FacultyPlaceholder />
+              <FacultyCoursesPage />
             </ProtectedRoute>
           }
         />
