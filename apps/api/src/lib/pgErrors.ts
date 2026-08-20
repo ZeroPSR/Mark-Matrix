@@ -1,5 +1,5 @@
 export interface MappedPgError {
-  status: number;
+  status: 400 | 404 | 409 | 500;
   body: { error: string; detail?: string };
 }
 
