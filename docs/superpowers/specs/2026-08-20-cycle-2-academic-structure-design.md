@@ -34,7 +34,7 @@ later cycle does not silently reverse one.
 | D1 | **Strict tree.** `programs.batch_id` FK — a program is a per-batch instance ("BCA 2023"), not a shared catalog entry. | Matches `CLAUDE.md`'s hierarchy and the `/batch/:b/program/:p/sem/:s` URL shape exactly. Every ancestor is derivable by walking FKs. Cost: program name/code repeats per batch, accepted. |
 | D2 | **Composite FKs, not triggers,** enforce that `student_enrollments`' `(batch_id, program_id, sem_id)` tuple is internally consistent. | Makes a mismatched tuple *unrepresentable* rather than merely rejected. No procedural code to maintain or forget. |
 | D3 | **Role-satellite tables** — `student_profiles`, `faculty_profiles`, `admin_profiles` keyed on `user_id`, holding role-specific columns. `profiles` keeps `name`/`role`. | Roll numbers belong to students only; bolting `roll_number` onto `profiles` would leave it NULL for two of three roles. |
-| D4 | **Satellites carry a constant `role` column** as a constraint key, with `foreign key (user_id, role) → profiles(user_id, role)`. | Prevents privilege escalation — see §4.1. Documented via `COMMENT ON COLUMN` so it is not mistaken for data. |
+| D4 | **Satellites hold no `role` column.** Their FK is `user_id → profiles(user_id)` alone. Role correctness is enforced by a `BEFORE INSERT OR UPDATE` trigger on each satellite that reads `profiles.role` and raises on mismatch. | Keeps the satellite tables free of a constant, non-data column. Costs procedural code in place of a declarative constraint — see §4.1. |
 | D5 | **Satellites carry no `created_at`/`updated_at`.** | `profiles` already owns the row lifecycle; duplicating invites drift. |
 | D6 | **CSV bulk enroll matches on `roll_number`.** Unknown roll number is a per-row error; no account is ever created. | User provisioning stays a cycle-1 concern. Bulk enroll is not an invite endpoint. |
 | D7 | **zod** for all request and CSV-row validation; becomes the first runtime dependency of `packages/shared`. | One schema definition serves API validation, CSV row validation, and TypeScript types via `z.infer`. |
@@ -52,51 +52,104 @@ cycle 1's `20260818100000`–`20260818100002` sequence.
 ### 3.1 `20260820100000_role_profiles.sql`
 
 ```sql
--- Constraint target for the satellites' composite FK.
-alter table public.profiles
-  add constraint profiles_user_role_uniq unique (user_id, role);
-
 create table public.student_profiles (
   user_id        uuid primary key
                  references public.profiles(user_id) on delete cascade,
-  role           public.user_role not null default 'student'
-                 check (role = 'student'),
   roll_number    text not null unique,
-  admission_year integer not null check (admission_year between 1990 and 2100),
-  foreign key (user_id, role)
-    references public.profiles(user_id, role)
+  admission_year integer not null check (admission_year between 2000 and 3000)
 );
-
-comment on column public.student_profiles.role is
-  'Constraint key, not data. Pins this row to a profiles row whose role is '
-  'student, via the composite FK. Never read by application code.';
 
 create table public.faculty_profiles (
   user_id       uuid primary key
                 references public.profiles(user_id) on delete cascade,
-  role          public.user_role not null default 'faculty'
-                check (role = 'faculty'),
   employee_code text not null unique,
   department    text,
-  designation   text,
-  foreign key (user_id, role)
-    references public.profiles(user_id, role)
+  designation   text
 );
 
 create table public.admin_profiles (
   user_id       uuid primary key
                 references public.profiles(user_id) on delete cascade,
-  role          public.user_role not null default 'admin'
-                check (role = 'admin'),
   employee_code text not null unique,
-  designation   text,
-  foreign key (user_id, role)
-    references public.profiles(user_id, role)
+  designation   text
 );
 ```
 
-`faculty_profiles.role` and `admin_profiles.role` carry the equivalent
-`COMMENT ON COLUMN`.
+Role correctness is enforced by a single parameterized trigger function reused
+across all three tables, rather than three near-identical ones:
+
+```sql
+create or replace function public.assert_profile_role()
+returns trigger language plpgsql
+security definer set search_path = public as $$
+declare
+  v_expected public.user_role := tg_argv[0]::public.user_role;
+  v_actual   public.user_role;
+begin
+  select role into v_actual
+    from public.profiles
+   where user_id = new.user_id;
+
+  if v_actual is null then
+    raise exception 'no profile exists for user %', new.user_id
+      using errcode = '23503';
+  end if;
+
+  if v_actual <> v_expected then
+    raise exception 'user % has role %, expected %',
+      new.user_id, v_actual, v_expected
+      using errcode = '23514';
+  end if;
+
+  return new;
+end $$;
+
+create trigger student_profiles_role_check
+  before insert or update of user_id on public.student_profiles
+  for each row execute function public.assert_profile_role('student');
+```
+
+`faculty_profiles` and `admin_profiles` get the equivalent trigger with
+`'faculty'` / `'admin'`.
+
+Three details that matter:
+
+- The trigger fires on **`INSERT` *and* `UPDATE OF user_id`**. Insert-only would
+  let a row be repointed at a user of the wrong role afterwards.
+- It is `security definer` because it reads `profiles`, which has RLS enabled.
+- The raised `errcode`s are chosen to land on the existing error contract:
+  `23503` and `23514` already map to `409` in §5.1, so no new error handling is
+  required.
+
+The satellite-side trigger guards only one direction. A second trigger on
+`profiles` guards the other — changing a user's role while a satellite row still
+exists:
+
+```sql
+create or replace function public.block_role_change_with_satellite()
+returns trigger language plpgsql
+security definer set search_path = public as $$
+begin
+  if new.role is distinct from old.role
+     and (exists (select 1 from public.student_profiles where user_id = old.user_id)
+       or exists (select 1 from public.faculty_profiles where user_id = old.user_id)
+       or exists (select 1 from public.admin_profiles   where user_id = old.user_id))
+  then
+    raise exception
+      'cannot change role for % while a role profile exists', old.user_id
+      using errcode = '23514';
+  end if;
+  return new;
+end $$;
+
+create trigger profiles_block_role_change
+  before update of role on public.profiles
+  for each row execute function public.block_role_change_with_satellite();
+```
+
+Promotion and demotion therefore become: delete the satellite row, change the
+role, create the new satellite row — which is why the satellite resources in §5
+expose `DELETE`.
 
 RLS for all three follows cycle 1's `profiles` template — own-row `SELECT`, plus
 `ALL` for admin:
@@ -131,7 +184,7 @@ end $$;
 create table public.batches (
   id         uuid primary key default gen_random_uuid(),
   name       text not null unique,
-  start_year integer not null check (start_year between 1990 and 2100),
+  start_year integer not null check (start_year between 2000 and 3000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -279,19 +332,26 @@ Two deliberate scope choices, confirmed during brainstorming:
 
 ## 4. Security notes
 
-### 4.1 Why the constant `role` column exists
+### 4.1 What the role triggers defend against
 
 `faculty_assignments.faculty_id` references `faculty_profiles(user_id)`, and
 `teaches_course()` matches on `auth.uid()` alone — it does not check the
-caller's role. Without the composite FK, a student's uid inserted into
-`faculty_profiles` (a mistyped UUID, a bug in a picker component) would make
-that student assignable to courses and grant them faculty-level course reads
-while their JWT still says `student`.
+caller's role. So a `faculty_profiles` row holding a student's uid is enough to
+make that student assignable to courses and grant them faculty-level course
+reads while their JWT still says `student`.
 
-`foreign key (user_id, role) → profiles(user_id, role)` makes that insert fail
-in the database. It also blocks changing `profiles.role` while a satellite row
-exists — the admin must delete the satellite first, which is the intended
-promotion/demotion workflow (hence `DELETE` on the satellite resources in §5).
+Two ways that row could come about, and the trigger that closes each:
+
+| Path | Guard |
+|---|---|
+| A student's uid is inserted into `faculty_profiles` — mistyped UUID, bug in a picker component | `assert_profile_role('faculty')` on insert/update of `user_id` |
+| A genuine faculty member is demoted to student while their satellite row and assignments remain | `block_role_change_with_satellite()` on `profiles` |
+
+This is enforcement by procedural code rather than by a constraint, which is a
+deliberate trade (D4): the satellite tables stay free of a constant `role`
+column, at the cost of two trigger functions that must be tested directly. §7.2
+scenarios 6 and 7 exist for exactly that reason — a trigger that silently stops
+firing is invisible without a test that provokes it.
 
 ### 4.3 Interaction between `CASCADE` and `RESTRICT`
 
@@ -481,6 +541,8 @@ RLS covers the same ground independently at the database layer.
 | 4b | Bad `course_id` | assignment insert with random UUID → `23503` |
 | 4c | Non-faculty assignment | assignment insert with a student's uid → `23503` |
 | 5 | Tuple integrity | enrollment with mismatched `(batch, program, sem)` → `23503` |
+| 6 | **Wrong-role satellite insert** | a student's uid inserted into `faculty_profiles` → `23514` from `assert_profile_role` |
+| 7 | **Role change with satellite** | `update profiles set role` for a user holding a satellite row → `23514` from `block_role_change_with_satellite`; succeeds after the satellite is deleted |
 
 Scenario 2 is the important one: reading **before** the assignment proves the
 policy rather than the endpoint. A test that only reads after assignment would
