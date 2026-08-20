@@ -46,7 +46,7 @@ later cycle does not silently reverse one.
 
 ## 3. Migrations
 
-Four files under `supabase/migrations/`, applied in order. Timestamps continue
+Five files under `supabase/migrations/`, applied in order. Timestamps continue
 cycle 1's `20260818100000`–`20260818100002` sequence.
 
 ### 3.1 `20260820100000_role_profiles.sql`
@@ -317,7 +317,51 @@ Full helper set:
 | `courses` | `ALL` | `SELECT` via `teaches_course(id)` | — none — |
 | `faculty_assignments` | `ALL` | `SELECT` where `faculty_id = auth.uid()` | — none — |
 | `student_enrollments` | `ALL` | — none — | `SELECT` where `student_id = auth.uid()` |
-| `*_profiles` | `ALL` | `SELECT` own | `SELECT` own |
+| `profiles` | `ALL` | `SELECT` own | `SELECT` own |
+| `student_profiles` `faculty_profiles` `admin_profiles` | `ALL` | `SELECT` own | `SELECT` own |
+
+No table in this cycle grants `INSERT`, `UPDATE` or `DELETE` to anyone but
+admin. Faculty and student access is `SELECT`-only throughout.
+
+### 3.5 `20260820100004_profiles_admin_only_writes.sql`
+
+Cycle 1 shipped a `profiles_update_own` policy letting any authenticated user
+edit their own row (`role` was pinned by its `WITH CHECK`, but `name` was
+self-editable). This cycle tightens `profiles` to match the rule applied to
+every table above — **admin writes, everyone else reads their own row**:
+
+```sql
+drop policy if exists "profiles_update_own" on public.profiles;
+```
+
+Nothing else changes. `profiles_select_own`, `profiles_select_admin` and
+`profiles_update_admin` are already correct, and the absence of `INSERT`/
+`DELETE` policies already limits inserts to cycle 1's `SECURITY DEFINER`
+`handle_new_user` trigger and deletes to the `auth.users` cascade.
+
+Two consequences worth stating plainly:
+
+- **Users lose self-service name editing.** Nothing in the current web app uses
+  it (no page has ever written to `profiles`), so nothing breaks — but if a
+  "edit my profile" feature is wanted later it must route through an admin, or
+  this policy must be reinstated deliberately.
+- `profiles_update_admin` declares `USING` without `WITH CHECK`. That is
+  correct, not an omission: for `UPDATE`, PostgreSQL applies the `USING`
+  expression as the check when `WITH CHECK` is absent, and `is_admin()` is
+  row-independent, so both the old and new row are validated identically.
+- **This breaks an existing cycle-1 test, which must be updated in the same
+  commit.** `apps/api/src/tests/rls.profiles.test.ts` asserts
+  `"alice cannot promote herself to admin"` with `expect(error).not.toBeNull()`.
+  That passes today because `profiles_update_own`'s `USING` matches her row and
+  its `WITH CHECK` then *fails*, raising an error. Once the policy is dropped,
+  her update matches no policy at all, so PostgREST reports **0 rows affected
+  and no error**. The assertion must become `expect(data).toHaveLength(0)`.
+
+  The distinction is worth internalizing, because it recurs across every RLS
+  test in this cycle: **a failed `WITH CHECK` raises; a non-matching `USING`
+  silently affects nothing.** A test asserting only `error !== null` will pass
+  for the wrong reason, or fail despite correct behaviour.
+
 
 Two deliberate scope choices, confirmed during brainstorming:
 
@@ -575,6 +619,7 @@ RLS covers the same ground independently at the database layer.
 | 5 | Tuple integrity | enrollment with mismatched `(batch, program, sem)` → `23503` |
 | 6 | **Wrong-role satellite insert** | a student's uid inserted into `faculty_profiles` → `23514` from `assert_profile_role` |
 | 7 | **Role change with satellite** | `update profiles set role` for a user holding a satellite row → `23514` from `block_role_change_with_satellite`; succeeds after the satellite is deleted |
+| 8 | **`profiles` is admin-write-only** | a student updating their own `profiles.name` → 0 rows affected (§3.5); the same update by an admin succeeds |
 
 Scenario 2 is the important one: reading **before** the assignment proves the
 policy rather than the endpoint. A test that only reads after assignment would
