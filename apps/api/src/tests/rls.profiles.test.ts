@@ -80,9 +80,13 @@ describe("RLS: profiles table", () => {
   });
 
   itIf("alice cannot promote herself to admin", async () => {
-    const { error } = await alice.from("profiles").update({ role: "admin" })
-      .eq("user_id", aliceUser.userId!);
-    // RLS rejects: expect a non-null error OR zero rows affected.
-    expect(error).not.toBeNull();
+    // With profiles_update_own dropped, alice's update matches no policy at
+    // all — PostgREST returns 0 rows and no error. Asserting on data length
+    // rather than error reflects the correct behaviour: a non-matching USING
+    // silently affects nothing, while a failed WITH CHECK would raise.
+    const { data, error } = await alice.from("profiles")
+      .update({ role: "admin" }).eq("user_id", aliceUser.userId!).select();
+    expect(error).toBeNull();
+    expect(data).toHaveLength(0);
   });
 });
