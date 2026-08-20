@@ -29,3 +29,6 @@ Thumbs.db
 
 # Test
 coverage/
+
+# Isolated workspaces
+.claude/worktrees/
