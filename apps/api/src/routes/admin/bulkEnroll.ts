@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { parseEnrollCsv } from "@mark-matrix/shared";
+import { formatZodError, parseEnrollCsv } from "@mark-matrix/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
@@ -47,7 +47,7 @@ export const adminBulkEnrollRoute = new Hono<AppEnv>().post("/", async (c) => {
   const parsed = bulkEnrollBodySchema.safeParse(body);
   if (!parsed.success) {
     return c.json(
-      { error: "validation_failed", fields: parsed.error.issues },
+      { error: "validation_failed", fields: formatZodError(parsed.error) },
       400,
     );
   }
@@ -121,7 +121,14 @@ export const adminBulkEnrollRoute = new Hono<AppEnv>().post("/", async (c) => {
       out.errors.push({
         row: r.row,
         rollNumber: r.rollNumber,
-        reason: mapped.body.error === "duplicate" ? "already_enrolled" : "fk_violation",
+        reason:
+          mapped.body.error === "duplicate"
+            ? "already_enrolled"
+            : mapped.body.error === "invalid_reference"
+              ? (insertErr.message ?? "").match(/role/i)
+                ? "wrong_role"
+                : "fk_violation"
+              : "server_error",
       });
       continue;
     }

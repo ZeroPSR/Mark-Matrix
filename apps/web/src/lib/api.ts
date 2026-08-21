@@ -29,11 +29,18 @@ export async function apiFetch<T>(
   if (token) headers.set("authorization", `Bearer ${token}`);
   const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
   const text = await res.text();
-  const body = text.length > 0 ? JSON.parse(text) : null;
+  let body: unknown = null;
+  if (text.length > 0) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { error: "parse_failed" };
+    }
+  }
   if (!res.ok) {
     const err = new Error(`API ${res.status}`) as ApiError;
     err.status = res.status;
-    err.body = body ?? { error: "unknown" };
+    err.body = (body as ApiError["body"]) ?? { error: "unknown" };
     throw err;
   }
   return body as T;
