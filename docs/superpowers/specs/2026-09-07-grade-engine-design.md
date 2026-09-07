@@ -127,7 +127,8 @@ shortest honest answer.)
 
 ```sql
 create or replace function public.invalidate_course_grades_on_submit()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+security definer set search_path = public as $$
 begin
   if new.status = 'submitted' and old.status is distinct from 'submitted' then
     delete from public.course_grades where course_id = new.course_id;
