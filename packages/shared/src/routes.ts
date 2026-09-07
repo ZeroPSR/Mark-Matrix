@@ -1,6 +1,16 @@
 // Cycle 2 route additions. The cycle-1 entries live in src/index.ts.
 // Add this file and re-export it from src/index.ts.
 
+// Attendance — one URL template, three role-prefixed mounts.
+const attendanceBase = (
+  role: "faculty" | "admin" | "student",
+  batchId: string,
+  programId: string,
+  semId: string,
+  courseId: string,
+): string =>
+  `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/attendance`;
+
 export const ROUTES_CYCLE_2 = {
   // Admin — batch/program/sem/course CRUD
   adminBatches: "/api/admin/batches",
@@ -40,4 +50,9 @@ export const ROUTES_CYCLE_2 = {
 
   // Student
   studentEnrollment: "/api/student/enrollment",
+
+  // Attendance — three role-prefixed mounts of the same template.
+  facultyAttendance: attendanceBase,
+  adminAttendance: attendanceBase,
+  studentAttendance: attendanceBase,
 } as const;

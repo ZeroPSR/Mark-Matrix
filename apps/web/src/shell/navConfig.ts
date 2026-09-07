@@ -14,4 +14,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Enrollments",  to: "/admin/enrollments",      roles: ["admin"] },
   { label: "My Courses",   to: "/faculty/courses",        roles: ["faculty"] },
   { label: "My Results",   to: "/student/results",        roles: ["student"] },
+  { label: "My Attendance", to: "/student/attendance",    roles: ["student"] },
 ] as const;

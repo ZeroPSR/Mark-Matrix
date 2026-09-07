@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { API_ROUTES, ROUTES_CYCLE_2 } from "@mark-matrix/shared";
 import { supabaseAuth } from "./middleware/auth.js";
 import { requireRole } from "./middleware/requireRole.js";
@@ -17,9 +18,34 @@ import {
 } from "./routes/admin/roleProfiles.js";
 import { facultyCoursesRoute } from "./routes/faculty/courses.js";
 import { studentEnrollmentRoute } from "./routes/student/enrollment.js";
+import {
+  attendanceRoute,
+  studentAttendanceRoute,
+} from "./routes/attendance/core.js";
 import type { AppEnv } from "./env.js";
 
 const app = new Hono<AppEnv>();
+
+// CORS must run before any auth/requireRole so browser preflights succeed
+// without sending credentials. The web app sends `Authorization: Bearer ...`
+// (not cookies), so Allow-Credentials=false is safe.
+const ALLOWED_ORIGINS: readonly string[] = [
+  "https://mark-matrix-web.pages.dev",
+  "https://mark-matrix-web.team-tractor.workers.dev",
+];
+app.use(
+  "*",
+  cors({
+    origin: (origin) =>
+      (origin !== undefined && ALLOWED_ORIGINS.includes(origin)) ||
+      origin?.startsWith("http://127.0.0.1")
+        ? origin
+        : "https://mark-matrix-web.pages.dev",
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["authorization", "content-type"],
+    maxAge: 600,
+  }),
+);
 
 app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
@@ -41,8 +67,22 @@ app.route(ROUTES_CYCLE_2.adminBulkEnroll, adminBulkEnrollRoute);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
+app.route(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
+  attendanceRoute,
+);
+
+app.use("/api/admin/*", requireRole("admin"));
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
+  attendanceRoute,
+);
 
 app.use("/api/student/*", requireRole("student"));
 app.route(ROUTES_CYCLE_2.studentEnrollment, studentEnrollmentRoute);
+app.route(
+  "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
+  studentAttendanceRoute,
+);
 
 export default app;

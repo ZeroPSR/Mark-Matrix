@@ -10,7 +10,10 @@ import { AcademicStructurePage } from "./pages/admin/AcademicStructurePage.js";
 import { AssignmentsPage } from "./pages/admin/AssignmentsPage.js";
 import { EnrollmentsPage } from "./pages/admin/EnrollmentsPage.js";
 import { FacultyCoursesPage } from "./pages/faculty/FacultyCoursesPage.js";
+import { FacultyMarkAttendancePage } from "./pages/faculty/MarkAttendancePage.js";
+import { RosterAttendancePage } from "./pages/faculty/RosterAttendancePage.js";
 import { StudentPlaceholder } from "./pages/student/StudentPlaceholder.js";
+import { StudentMyAttendancePage } from "./pages/student/MyAttendancePage.js";
 
 export function App(): JSX.Element {
   return (
@@ -65,10 +68,42 @@ export function App(): JSX.Element {
           }
         />
         <Route
+          path="faculty/attendance/:courseId"
+          element={
+            <ProtectedRoute roles={["faculty"]}>
+              <FacultyMarkAttendancePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="faculty/attendance/:courseId/roster"
+          element={
+            <ProtectedRoute roles={["faculty"]}>
+              <RosterAttendancePage role="faculty" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/attendance/:courseId/roster"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <RosterAttendancePage role="admin" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="student/results"
           element={
             <ProtectedRoute roles={["student"]}>
               <StudentPlaceholder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="student/attendance"
+          element={
+            <ProtectedRoute roles={["student"]}>
+              <StudentMyAttendancePage />
             </ProtectedRoute>
           }
         />
