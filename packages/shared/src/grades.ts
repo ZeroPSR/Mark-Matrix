@@ -174,3 +174,98 @@ export function computeCgpa(sgpas: readonly number[]): number {
   for (const s of sgpas) assertGradePoint("sgpa", s);
   return round2(sgpas.reduce((a, b) => a + b, 0) / sgpas.length);
 }
+
+import { z } from "zod";
+
+const uuid = z.string().uuid();
+
+export const createGradeSchemeSchema = z
+  .object({
+    schemeGroup: z.string().trim().min(1).max(120),
+    scope: z.enum(["course", "program"]),
+    courseId: uuid.optional(),
+    programId: uuid.optional(),
+    gradeLabel: z.string().trim().min(1).max(20),
+    minMarks: z.number().finite().min(0).max(100),
+    maxMarks: z.number().finite().min(0).max(100),
+    gradePoint: z.number().finite().min(0).max(10),
+    isPassing: z.boolean().optional(),
+  })
+  .refine(
+    (v) =>
+      (v.scope === "course" && v.courseId !== undefined && v.programId === undefined) ||
+      (v.scope === "program" && v.programId !== undefined && v.courseId === undefined),
+    { message: "scope_and_anchor_mismatch" },
+  )
+  .refine((v) => v.minMarks <= v.maxMarks, { message: "min_exceeds_max" });
+export type CreateGradeScheme = z.infer<typeof createGradeSchemeSchema>;
+
+export const patchGradeSchemeSchema = z
+  .object({
+    gradeLabel: z.string().trim().min(1).max(20).optional(),
+    minMarks: z.number().finite().min(0).max(100).optional(),
+    maxMarks: z.number().finite().min(0).max(100).optional(),
+    gradePoint: z.number().finite().min(0).max(10).optional(),
+    isPassing: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "no_fields" });
+export type PatchGradeScheme = z.infer<typeof patchGradeSchemeSchema>;
+
+export interface GradeSchemeRow {
+  id: string;
+  schemeGroup: string;
+  scope: "course" | "program";
+  courseId: string | null;
+  programId: string | null;
+  gradeLabel: string;
+  minMarks: number;
+  maxMarks: number;
+  gradePoint: number;
+  isPassing: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseGradeRow {
+  id: string;
+  courseId: string;
+  studentId: string;
+  totalObtained: number;
+  totalMax: number;
+  percentage: number;
+  gradeLabel: string;
+  gradePoint: number;
+  gradeSchemeId: string;
+  computedAt: string;
+}
+
+export interface CourseGradeResponse {
+  courseId: string;
+  studentId: string;
+  totalObtained: number;
+  totalMax: number;
+  percentage: number;
+  gradeLabel: string;
+  gradePoint: number;
+  gradeSchemeId: string;
+  schemeGroup: string;
+  computedAt: string;
+}
+
+export interface SgpaResponse {
+  studentId: string;
+  semId: string;
+  sgpa: number;
+  courseCount: number;
+  totalCredits: number;
+  asOf: string;
+}
+
+export interface CgpaResponse {
+  studentId: string;
+  programId: string;
+  cgpa: number;
+  semesterCount: number;
+  totalCredits: number;
+  asOf: string;
+}

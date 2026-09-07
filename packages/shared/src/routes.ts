@@ -55,4 +55,33 @@ export const ROUTES_CYCLE_2 = {
   facultyAttendance: attendanceBase,
   adminAttendance: attendanceBase,
   studentAttendance: attendanceBase,
+
+  // Cycle 5 — grade engine
+  adminGradeSchemes: "/api/admin/grade-schemes",
+  adminGradeSchemeById: (id: string) => `/api/admin/grade-schemes/${id}`,
+
+  // Three role-prefixed mounts of the same template:
+  //   /api/{role}/batch/:b/program/:p/sem/:s/course/:c/marks/:studentId/grade
+  courseGradeUrl: (
+    role: "admin" | "faculty" | "student",
+    batchId: string,
+    programId: string,
+    semId: string,
+    courseId: string,
+    studentId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/marks/${studentId}/grade`,
+
+  //   /api/{role}/batch/:b/program/:p/sem/:s/score/sgpa
+  semSgpaUrl: (
+    role: "admin" | "faculty" | "student",
+    batchId: string,
+    programId: string,
+    semId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/score/sgpa`,
+
+  //   /api/{role}/score/cgpa
+  cgpaUrl: (role: "admin" | "faculty" | "student"): string =>
+    `/api/${role}/score/cgpa`,
 } as const;

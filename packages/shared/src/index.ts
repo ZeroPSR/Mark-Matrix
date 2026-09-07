@@ -50,3 +50,5 @@ export * from "./schemas.js";
 export * from "./csv.js";
 
 export * from "./attendance.js";
+
+export * from "./grades.js";
