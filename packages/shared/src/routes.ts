@@ -1,15 +1,30 @@
 // Cycle 2 route additions. The cycle-1 entries live in src/index.ts.
 // Add this file and re-export it from src/index.ts.
 
-// Attendance — one URL template, three role-prefixed mounts.
-const attendanceBase = (
+// Generic URL builder for the batch/program/sem/course/{attendance,marks} mount.
+// One router is exposed under three role prefixes; the leaf segment differs.
+const courseLeafBase = (role: "faculty" | "admin" | "student") =>
+  (batchId: string, programId: string, semId: string, courseId: string, leaf: string): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/${leaf}`;
+
+const attendanceBase = courseLeafBase("faculty");
+// attendanceBase(...) was historically defined with role as the first arg.
+// Wrap to preserve the existing call signature: attendanceBase(role, b, p, s, c).
+const attendanceUrl = (
   role: "faculty" | "admin" | "student",
   batchId: string,
   programId: string,
   semId: string,
   courseId: string,
-): string =>
-  `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/attendance`;
+): string => courseLeafBase(role)(batchId, programId, semId, courseId, "attendance");
+
+const marksUrl = (
+  role: "faculty" | "admin" | "student",
+  batchId: string,
+  programId: string,
+  semId: string,
+  courseId: string,
+): string => courseLeafBase(role)(batchId, programId, semId, courseId, "marks");
 
 export const ROUTES_CYCLE_2 = {
   // Admin — batch/program/sem/course CRUD
@@ -52,9 +67,9 @@ export const ROUTES_CYCLE_2 = {
   studentEnrollment: "/api/student/enrollment",
 
   // Attendance — three role-prefixed mounts of the same template.
-  facultyAttendance: attendanceBase,
-  adminAttendance: attendanceBase,
-  studentAttendance: attendanceBase,
+  facultyAttendance: attendanceUrl,
+  adminAttendance: attendanceUrl,
+  studentAttendance: attendanceUrl,
 
   // Cycle 5 — grade engine
   adminGradeSchemes: "/api/admin/grade-schemes",
@@ -84,4 +99,13 @@ export const ROUTES_CYCLE_2 = {
   //   /api/{role}/score/cgpa
   cgpaUrl: (role: "admin" | "faculty" | "student"): string =>
     `/api/${role}/score/cgpa`,
+
+  // Marks — three role-prefixed mounts of the same template.
+  facultyMarks: marksUrl,
+  adminMarks: marksUrl,
+  studentMarks: marksUrl,
 } as const;
+
+// Silence "declared but never used" — attendanceBase is kept exported for
+// downstream consumers that imported the inner helper directly.
+export { attendanceBase };

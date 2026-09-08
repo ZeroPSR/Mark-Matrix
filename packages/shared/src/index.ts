@@ -52,3 +52,7 @@ export * from "./csv.js";
 export * from "./attendance.js";
 
 export * from "./grades.js";
+
+export * from "./marks.js";
+
+export * from "./marksCsv.js";

@@ -33,11 +33,16 @@ import {
   studentCgpaRoute,
 } from "./routes/grades/cgpa.js";
 import { facultyCoursesRoute } from "./routes/faculty/courses.js";
+import { courseExamTypesRoute } from "./routes/faculty/courseExamTypes.js";
 import { studentEnrollmentRoute } from "./routes/student/enrollment.js";
 import {
   attendanceRoute,
   studentAttendanceRoute,
 } from "./routes/attendance/core.js";
+import {
+  marksRoute,
+  studentMarksRoute,
+} from "./routes/marks/core.js";
 import type { AppEnv } from "./env.js";
 
 const app = new Hono<AppEnv>();
@@ -93,9 +98,14 @@ app.route("/api/admin/score/cgpa", cgpaRoute);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
+app.route("/api/faculty/courses", courseExamTypesRoute);
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   attendanceRoute,
+);
+app.route(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  marksRoute,
 );
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
@@ -108,9 +118,14 @@ app.route(
 app.route("/api/faculty/score/cgpa", facultyCgpaRoute);
 
 app.use("/api/admin/*", requireRole("admin"));
+app.route("/api/admin/courses", courseExamTypesRoute);
 app.route(
   "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   attendanceRoute,
+);
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  marksRoute,
 );
 
 app.use("/api/student/*", requireRole("student"));
@@ -118,6 +133,10 @@ app.route(ROUTES_CYCLE_2.studentEnrollment, studentEnrollmentRoute);
 app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   studentAttendanceRoute,
+);
+app.route(
+  "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  studentMarksRoute,
 );
 app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
