@@ -45,6 +45,33 @@ async function getCourseGrade(c: Ctx): Promise<Response> {
   // Students can only request their own grade.
   const effectiveStudentId = role === "student" ? userId : studentId;
 
+  // Cache short-circuit: snapshot stability (spec §3.3, G6).
+  const cachedRead = await getCachedCourseGrade(supabase, courseId, effectiveStudentId);
+  if (cachedRead) {
+    const { data: schemeData, error: schemeErr } = await supabase
+      .from("grade_schemes")
+      .select("scheme_group")
+      .eq("id", cachedRead.gradeSchemeId)
+      .maybeSingle();
+    if (schemeErr) {
+      const m = mapPgError(schemeErr);
+      return c.json(m.body, m.status);
+    }
+    const resp: CourseGradeResponse = {
+      courseId,
+      studentId: effectiveStudentId,
+      totalObtained: cachedRead.totalObtained,
+      totalMax: cachedRead.totalMax,
+      percentage: cachedRead.percentage,
+      gradeLabel: cachedRead.gradeLabel,
+      gradePoint: cachedRead.gradePoint,
+      gradeSchemeId: cachedRead.gradeSchemeId,
+      schemeGroup: (schemeData as unknown as { scheme_group: string } | null)?.scheme_group ?? "",
+      computedAt: cachedRead.computedAt,
+    };
+    return c.json({ data: resp });
+  }
+
   // Read submitted marks for this course/student.
   const { data: marks, error: marksErr } = await supabase
     .from("marks")
