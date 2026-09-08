@@ -16,6 +16,22 @@ import {
   adminFacultyRoute,
   adminAdminsRoute,
 } from "./routes/admin/roleProfiles.js";
+import { adminGradeSchemesRoute } from "./routes/admin/gradeSchemes.js";
+import {
+  gradesRoute,
+  facultyGradesRoute,
+  studentGradesRoute,
+} from "./routes/grades/core.js";
+import {
+  sgpaRoute,
+  facultySgpaRoute,
+  studentSgpaRoute,
+} from "./routes/grades/sgpa.js";
+import {
+  cgpaRoute,
+  facultyCgpaRoute,
+  studentCgpaRoute,
+} from "./routes/grades/cgpa.js";
 import { facultyCoursesRoute } from "./routes/faculty/courses.js";
 import { studentEnrollmentRoute } from "./routes/student/enrollment.js";
 import {
@@ -64,6 +80,16 @@ app.route(ROUTES_CYCLE_2.adminAdmins, adminAdminsRoute);
 app.route(ROUTES_CYCLE_2.adminFacultyAssignments, adminFacultyAssignmentsRoute);
 app.route(ROUTES_CYCLE_2.adminEnrollments, adminEnrollmentsRoute);
 app.route(ROUTES_CYCLE_2.adminBulkEnroll, adminBulkEnrollRoute);
+app.route(ROUTES_CYCLE_2.adminGradeSchemes, adminGradeSchemesRoute);
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  gradesRoute,
+);
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/score/sgpa",
+  sgpaRoute,
+);
+app.route("/api/admin/score/cgpa", cgpaRoute);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
@@ -71,6 +97,15 @@ app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   attendanceRoute,
 );
+app.route(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  facultyGradesRoute,
+);
+app.route(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/score/sgpa",
+  facultySgpaRoute,
+);
+app.route("/api/faculty/score/cgpa", facultyCgpaRoute);
 
 app.use("/api/admin/*", requireRole("admin"));
 app.route(
@@ -84,5 +119,14 @@ app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   studentAttendanceRoute,
 );
+app.route(
+  "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  studentGradesRoute,
+);
+app.route(
+  "/api/student/batch/:batchId/program/:programId/sem/:semId/score/sgpa",
+  studentSgpaRoute,
+);
+app.route("/api/student/score/cgpa", studentCgpaRoute);
 
 export default app;
