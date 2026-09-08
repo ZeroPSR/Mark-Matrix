@@ -1,5 +1,6 @@
 import { useResource } from "../../lib/useResource.js";
 import { ROUTES_CYCLE_2 } from "@mark-matrix/shared";
+import { Link } from "react-router-dom";
 
 interface FacultyCourseView {
   id: string;
@@ -21,6 +22,10 @@ export function FacultyCoursesPage() {
           <li key={c.id}>
             <strong>{c.code}</strong> — {c.title} ({c.credits} cr)
             <br />Semester {c.semester.number} · Batch {c.semester.batchId} · Program {c.semester.programId}
+            <br />
+            <Link to={`/faculty/marks/${c.id}`}>Enter marks</Link>
+            {" · "}
+            <Link to={`/faculty/marks/${c.id}/roster`}>Marks roster</Link>
           </li>
         ))}
       </ul>

@@ -44,7 +44,7 @@ export const studentEnrollmentRoute = new Hono<AppEnv>().get("/", async (c) => {
   const { data, error } = await supabase
     .from("student_enrollments")
     .select(
-      "id, enrollment_date, batch_id, program_id, sem_id, semesters!inner(id, number, program_id, programs!inner(id, batch_id))",
+      "id, enrollment_date, batch_id, program_id, sem_id, semesters!student_enrollments_sem_id_fkey!inner(id, number, program_id, programs!inner(id, batch_id))",
     );
   if (error) {
     const m = mapPgError(error);
