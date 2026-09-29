@@ -119,6 +119,19 @@ async function bulkUpsert(c: Ctx): Promise<Response> {
       "id, course_id, student_id, exam_type, marks_obtained, max_marks, entered_by, status, updated_at",
     );
   if (error) {
+    // The broadened marks_lock_when_submitted trigger raises P0001 with
+    // message "marks_data_locked" (cycle-6) or "submitted_marks_are_locked"
+    // (cycle-4 legacy) when an upsert targets a row whose status has
+    // advanced past 'draft'. mapPgError has no P0001 branch and would return
+    // 500 internal_error, so we translate here — mirrors runStatusFlip in
+    // admin/marksLifecycle.ts.
+    const message = error.message ?? "";
+    if (error.code === "P0001" || message.includes("marks_data_locked")) {
+      return c.json({ error: "marks_data_locked", detail: message }, 409);
+    }
+    if (message.includes("submitted_marks_are_locked")) {
+      return c.json({ error: "submitted_marks_locked", detail: message }, 409);
+    }
     const m = mapPgError(error);
     return c.json(m.body, m.status);
   }

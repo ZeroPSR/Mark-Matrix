@@ -25,9 +25,13 @@ type MarksCalls = {
 
 function makeMockSupabase(opts: {
   examTypes?: { exam_type: string; max_marks: number }[];
-  upsertResult?: { data: unknown[]; error: null | { code: string; message: string } };
+  upsertResult?: { data: unknown[] | null; error: null | { code: string; message: string } };
   updateResult?: { data: unknown[] | null; error: null | { code: string; message: string } };
-  selectResult?: { data: unknown[]; error: null | { code: string; message: string } };
+  selectResult?: {
+    data?: unknown[] | null;
+    count?: number | null;
+    error: null | { code: string; message: string };
+  };
   studentsByRoll?: { user_id: string; roll_number: string }[];
   enrollments?: { student_id: string }[];
   course?: { id: string; semester_id: string };
@@ -66,6 +70,10 @@ function makeMockSupabase(opts: {
         return builder;
       },
       eq(col: string, val: unknown) {
+        calls.updateEq.push({ col, val });
+        return builder;
+      },
+      neq(col: string, val: unknown) {
         calls.updateEq.push({ col, val });
         return builder;
       },
@@ -133,7 +141,7 @@ function makeMockSupabase(opts: {
       },
       // Terminal await: return based on table and the mode.
       then(onFulfilled, onRejected) {
-        let result: { data: unknown; error: unknown };
+        let result: { data: unknown; count?: number | null; error: unknown };
         if (mode === "update") {
           // The submit handler does update().eq().eq() then awaits.
           if (opts.updateResult) {
@@ -165,7 +173,15 @@ function makeMockSupabase(opts: {
               result = { data: course, error: null };
               break;
             default:
-              result = opts.selectResult ?? { data: [], error: null };
+              // selectResult may carry a `count` for count-mode selects used
+              // by the /submit precondition query.
+              result = opts.selectResult
+                ? {
+                    data: opts.selectResult.data ?? [],
+                    count: opts.selectResult.count ?? null,
+                    error: opts.selectResult.error,
+                  }
+                : { data: [], error: null };
           }
         }
         return Promise.resolve(result).then(onFulfilled, onRejected);
@@ -349,6 +365,31 @@ describe("marks route shape", () => {
     // Either 409 (custom trigger raising) or 404 (RLS filtered it out) is acceptable —
     // what matters is that a draft-only enforcement is in place.
     expect([403, 404, 409]).toContain(res.status);
+  });
+
+  it("POST bulk-upsert on a course with locked-status rows returns 409 marks_data_locked (fix 1, test 2)", async () => {
+    // The marks_lock_when_submitted trigger raises P0001 with message
+    // "marks_data_locked" whenever an upsert targets a row whose status has
+    // advanced past 'draft'. The bulkUpsert route must translate that to a
+    // 409 with { error: "marks_data_locked" }, mirroring runStatusFlip.
+    const { client } = makeMockSupabase({
+      examTypes: [{ exam_type: "midterm", max_marks: 30 }],
+      upsertResult: {
+        data: null,
+        error: { code: "P0001", message: "marks_data_locked" },
+      },
+    });
+    const app = makeApp(client, "faculty");
+    const res = await app.request(URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        entries: [{ studentId: STUDENT_A, examType: "midterm", marksObtained: 27 }],
+      }),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; detail?: string };
+    expect(body.error).toBe("marks_data_locked");
   });
 
   it("student router returns 404 on POST (role gate)", async () => {
