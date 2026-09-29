@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-export const marksStatusSchema = z.enum(["draft", "submitted"]);
+export const marksStatusSchema = z.enum([
+  "draft",
+  "submitted",
+  "approved",
+  "locked",
+]);
 export type MarksStatus = z.infer<typeof marksStatusSchema>;
 
 const uuid = z.string().uuid();
@@ -50,3 +55,26 @@ export interface BulkMarksResponse {
   succeeded: number;
   errors: { row: number; rollNumber?: string; reason: string }[];
 }
+
+// Cycle 6 — admin approval workflow response shapes.
+export interface ApproveMarksResponse {
+  approved: number;
+  approvedBy: string;
+  approvedAt: string;
+}
+
+export interface LockMarksResponse {
+  locked: number;
+  lockedBy: string;
+  lockedAt: string;
+}
+
+export interface UnlockMarksResponse {
+  unlocked: number;
+  unlockedBy: string;
+  unlockedAt: string;
+}
+
+// Re-export the unlock zod schema (defined in results.ts) for ergonomic
+// co-location with the rest of the marks module surface.
+export { unlockMarksSchema, type UnlockMarks } from "./results.js";

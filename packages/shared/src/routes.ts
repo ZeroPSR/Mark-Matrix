@@ -104,6 +104,34 @@ export const ROUTES_CYCLE_2 = {
   facultyMarks: marksUrl,
   adminMarks: marksUrl,
   studentMarks: marksUrl,
+
+  // Cycle 6 — admin results approval workflow.
+  adminCourseMarksAction: (
+    role: "admin",
+    batchId: string,
+    programId: string,
+    semId: string,
+    courseId: string,
+    action: "approve" | "lock" | "unlock",
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/marks/${action}`,
+
+  adminSemGradesheetAction: (
+    role: "admin",
+    batchId: string,
+    programId: string,
+    semId: string,
+    action: "compile" | "lock" | "publish" | "unlock",
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/gradesheet/${action}`,
+
+  studentGradesheetPath: (
+    role: "student",
+    batchId: string,
+    programId: string,
+    semId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/gradesheet`,
 } as const;
 
 // Silence "declared but never used" — attendanceBase is kept exported for

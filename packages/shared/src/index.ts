@@ -56,3 +56,10 @@ export * from "./grades.js";
 export * from "./marks.js";
 
 export * from "./marksCsv.js";
+
+export * from "./results.js";
+
+// Forward-looking: Task 3 will create the transition validator module;
+// the re-export line below resolves at consumer compile time. No consumer
+// imports it yet, so the dangling reference does not affect typecheck.
+export * from "./transitionValidator.js";

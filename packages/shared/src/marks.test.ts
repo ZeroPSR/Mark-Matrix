@@ -8,12 +8,14 @@ import {
 } from "./marks.js";
 
 describe("marksStatusSchema", () => {
-  it("accepts draft and submitted", () => {
+  it("accepts every status in the cycle-6 enum", () => {
     expect(marksStatusSchema.parse("draft")).toBe("draft");
     expect(marksStatusSchema.parse("submitted")).toBe("submitted");
+    expect(marksStatusSchema.parse("approved")).toBe("approved");
+    expect(marksStatusSchema.parse("locked")).toBe("locked");
   });
   it("rejects other values", () => {
-    expect(() => marksStatusSchema.parse("approved")).toThrow();
+    expect(() => marksStatusSchema.parse("rejected")).toThrow();
     expect(() => marksStatusSchema.parse("")).toThrow();
   });
 });
