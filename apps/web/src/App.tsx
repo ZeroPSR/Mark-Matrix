@@ -9,6 +9,8 @@ import { UsersPage } from "./pages/admin/UsersPage.js";
 import { AcademicStructurePage } from "./pages/admin/AcademicStructurePage.js";
 import { AssignmentsPage } from "./pages/admin/AssignmentsPage.js";
 import { EnrollmentsPage } from "./pages/admin/EnrollmentsPage.js";
+import { ResultsReviewPage } from "./pages/admin/ResultsReviewPage.js";
+import { GradesheetAdminPage } from "./pages/admin/GradesheetAdminPage.js";
 import { FacultyCoursesPage } from "./pages/faculty/FacultyCoursesPage.js";
 import { FacultyMarkAttendancePage } from "./pages/faculty/MarkAttendancePage.js";
 import { RosterAttendancePage } from "./pages/faculty/RosterAttendancePage.js";
@@ -17,6 +19,7 @@ import { RosterMarksPage } from "./pages/faculty/RosterMarksPage.js";
 import { StudentPlaceholder } from "./pages/student/StudentPlaceholder.js";
 import { StudentMyAttendancePage } from "./pages/student/MyAttendancePage.js";
 import { StudentMyMarksPage } from "./pages/student/MyMarksPage.js";
+import { MyGradesheetPage } from "./pages/student/MyGradesheetPage.js";
 
 export function App(): JSX.Element {
   return (
@@ -59,6 +62,22 @@ export function App(): JSX.Element {
           element={
             <ProtectedRoute roles={["admin"]}>
               <EnrollmentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/results"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <ResultsReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/gradesheets/:batchId/:programId/:semId"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <GradesheetAdminPage />
             </ProtectedRoute>
           }
         />
@@ -139,6 +158,14 @@ export function App(): JSX.Element {
           element={
             <ProtectedRoute roles={["student"]}>
               <StudentMyMarksPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="student/gradesheets/:batchId/:programId/:semId"
+          element={
+            <ProtectedRoute roles={["student"]}>
+              <MyGradesheetPage />
             </ProtectedRoute>
           }
         />
