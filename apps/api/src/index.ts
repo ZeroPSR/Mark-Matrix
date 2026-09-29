@@ -34,6 +34,9 @@ import {
 } from "./routes/grades/cgpa.js";
 import { facultyCoursesRoute } from "./routes/faculty/courses.js";
 import { courseExamTypesRoute } from "./routes/faculty/courseExamTypes.js";
+import { adminMarksLifecycleRoute } from "./routes/admin/marksLifecycle.js";
+import { adminGradesheetsRoute } from "./routes/admin/gradesheets.js";
+import { studentGradesheetRoute } from "./routes/student/gradesheet.js";
 import { studentEnrollmentRoute } from "./routes/student/enrollment.js";
 import {
   attendanceRoute,
@@ -95,6 +98,10 @@ app.route(
   sgpaRoute,
 );
 app.route("/api/admin/score/cgpa", cgpaRoute);
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/gradesheet",
+  adminGradesheetsRoute,
+);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
@@ -127,6 +134,10 @@ app.route(
   "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
   marksRoute,
 );
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
+  adminMarksLifecycleRoute,
+);
 
 app.use("/api/student/*", requireRole("student"));
 app.route(ROUTES_CYCLE_2.studentEnrollment, studentEnrollmentRoute);
@@ -137,6 +148,10 @@ app.route(
 app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
   studentMarksRoute,
+);
+app.route(
+  "/api/student/batch/:batchId/program/:programId/sem/:semId/gradesheet",
+  studentGradesheetRoute,
 );
 app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
