@@ -439,6 +439,33 @@ describe("marks POST /submit", () => {
     expect(cols.some(([col, val]) => col === "course_id" && val === "c1")).toBe(true);
     expect(cols.some(([col, val]) => col === "status" && val === "draft")).toBe(true);
   });
+
+  it("returns 409 invalid_state_transition when the course has any non-draft marks (fix 2, test 2)", async () => {
+    // The submit precondition query counts rows with status != 'draft'.
+    // If the course has any submitted/approved/locked rows we must surface
+    // 409 rather than letting the UPDATE match zero rows and return 200.
+    const { client, calls } = makeMockSupabase({
+      examTypes: [],
+      selectResult: {
+        data: [] as unknown[],
+        count: 1, // any non-zero non-draft count trips the precondition
+        error: null,
+      },
+    });
+    const app = makeApp(client, "faculty");
+    const res = await app.request(`${URL}/submit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; detail?: string };
+    expect(body.error).toBe("invalid_state_transition");
+    expect(body.detail).toBe("course has non-draft marks");
+
+    // The UPDATE must NOT have been issued — precondition rejects before it.
+    expect(calls.update).toHaveLength(0);
+  });
 });
 
 describe("marks POST /bulk", () => {

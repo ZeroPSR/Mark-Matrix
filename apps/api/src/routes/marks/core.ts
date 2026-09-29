@@ -199,13 +199,37 @@ async function patchOne(c: Ctx): Promise<Response> {
 
 /**
  * POST /submit — flip every draft row of this course to submitted.
- * Idempotent: re-submitting is a no-op (only draft rows are touched).
- * The DB trigger + RLS prevent any other column from changing.
+ *
+ * The WHERE clause on the UPDATE is pinned to `status='draft'` so a re-submit
+ * is a no-op (zero rows flipped) — but if the course has ANY non-draft rows
+ * (submitted/approved/locked), we must surface a 409 rather than silently
+ * returning `{ submitted: 0 }`. The trigger `marks_lock_when_submitted`
+ * never fires on the no-op path because no rows are matched.
  */
 async function submitCourse(c: Ctx): Promise<Response> {
   const supabase = c.get("supabase");
   const courseId = c.req.param("courseId");
   if (!courseId) return c.json({ error: "missing_course" }, 400);
+
+  // Precondition: refuse to submit a course that already has any non-draft
+  // rows. Without this check, the UPDATE below would match zero rows and
+  // return 200 with submitted:0, hiding the fact that the course has been
+  // submitted/locked already.
+  const { count: nonDraftCount, error: preErr } = await supabase
+    .from("marks")
+    .select("id", { count: "exact", head: true })
+    .eq("course_id", courseId)
+    .neq("status", "draft");
+  if (preErr) {
+    const m = mapPgError(preErr);
+    return c.json(m.body, m.status);
+  }
+  if ((nonDraftCount ?? 0) > 0) {
+    return c.json(
+      { error: "invalid_state_transition", detail: "course has non-draft marks" },
+      409,
+    );
+  }
 
   const { data, error } = await supabase
     .from("marks")
