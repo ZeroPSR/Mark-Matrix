@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useResource } from "../../lib/useResource.js";
 import { ROUTES_CYCLE_2, type GradesheetRow } from "@mark-matrix/shared";
+import { DownloadTranscriptButton } from "../../components/DownloadTranscriptButton.js";
 
 interface GradesheetEnvelope {
   data: GradesheetRow | null;
@@ -52,6 +53,11 @@ export function MyGradesheetPage(): JSX.Element {
         <dd>{g.courseCount ?? "—"}</dd>
       </dl>
       {g.publishedAt !== null && <p>Published on {g.publishedAt}</p>}
+      <DownloadTranscriptButton
+        url={ROUTES_CYCLE_2.studentTranscript("student", batchId, programId, semId)}
+        label="Download Transcript"
+        disabled={g.status !== "published"}
+      />
     </main>
   );
 }

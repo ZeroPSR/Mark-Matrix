@@ -7,6 +7,15 @@ vi.mock("../lib/api.js", () => ({
   apiFetch: vi.fn().mockResolvedValue({}),
 }));
 
+vi.mock("../lib/supabase.js", () => ({
+  supabase: {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: { access_token: "test-token" } } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+  },
+}));
+
 describe("GradesheetAdminPage", () => {
   it("renders the four lifecycle buttons", () => {
     render(

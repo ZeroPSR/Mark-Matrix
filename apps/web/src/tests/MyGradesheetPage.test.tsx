@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { MyGradesheetPage } from "../pages/student/MyGradesheetPage.js";
+import { AuthProvider } from "../auth/AuthContext.js";
 
 // vi.mock is hoisted above all imports, so the factory cannot close over
 // module-level lets. vi.hoisted shares mutable state with the hoisted
@@ -17,6 +18,17 @@ const mockState = vi.hoisted(() => ({
 
 vi.mock("../lib/useResource.js", () => ({
   useResource: () => mockState.result,
+}));
+
+// Mock supabase so the DownloadTranscriptButton's auth.getSession() call
+// doesn't try to open a WebSocket.
+vi.mock("../lib/supabase.js", () => ({
+  supabase: {
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: { access_token: "test-token" } } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+  },
 }));
 
 describe("MyGradesheetPage", () => {
@@ -47,14 +59,16 @@ describe("MyGradesheetPage", () => {
       refetch: () => {},
     };
     render(
-      <MemoryRouter initialEntries={["/student/gradesheets/b1/p1/s1"]}>
-        <Routes>
-          <Route
-            path="/student/gradesheets/:batchId/:programId/:semId"
-            element={<MyGradesheetPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/student/gradesheets/b1/p1/s1"]}>
+          <Routes>
+            <Route
+              path="/student/gradesheets/:batchId/:programId/:semId"
+              element={<MyGradesheetPage />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
     );
     expect(screen.getByText(/SGPA/)).toBeTruthy();
   });
@@ -67,14 +81,16 @@ describe("MyGradesheetPage", () => {
       refetch: () => {},
     };
     render(
-      <MemoryRouter initialEntries={["/student/gradesheets/b1/p1/s1"]}>
-        <Routes>
-          <Route
-            path="/student/gradesheets/:batchId/:programId/:semId"
-            element={<MyGradesheetPage />}
-          />
-        </Routes>
-      </MemoryRouter>,
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/student/gradesheets/b1/p1/s1"]}>
+          <Routes>
+            <Route
+              path="/student/gradesheets/:batchId/:programId/:semId"
+              element={<MyGradesheetPage />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
     );
     expect(screen.getByText(/Gradesheet not available yet/)).toBeTruthy();
   });

@@ -11,10 +11,12 @@ import { AssignmentsPage } from "./pages/admin/AssignmentsPage.js";
 import { EnrollmentsPage } from "./pages/admin/EnrollmentsPage.js";
 import { ResultsReviewPage } from "./pages/admin/ResultsReviewPage.js";
 import { GradesheetAdminPage } from "./pages/admin/GradesheetAdminPage.js";
+import { AnalyticsDashboardPage } from "./pages/admin/AnalyticsDashboardPage.js";
 import { FacultyCoursesPage } from "./pages/faculty/FacultyCoursesPage.js";
 import { FacultyMarkAttendancePage } from "./pages/faculty/MarkAttendancePage.js";
 import { RosterAttendancePage } from "./pages/faculty/RosterAttendancePage.js";
 import { FacultyMarksEntryPage } from "./pages/faculty/MarksEntryPage.js";
+import { AnalyticsPage } from "./pages/faculty/AnalyticsPage.js";
 import { RosterMarksPage } from "./pages/faculty/RosterMarksPage.js";
 import { StudentPlaceholder } from "./pages/student/StudentPlaceholder.js";
 import { StudentMyAttendancePage } from "./pages/student/MyAttendancePage.js";
@@ -82,10 +84,26 @@ export function App(): JSX.Element {
           }
         />
         <Route
+          path="admin/analytics/:batchId/:programId/:semId"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AnalyticsDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="faculty/courses"
           element={
             <ProtectedRoute roles={["faculty"]}>
               <FacultyCoursesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="faculty/analytics"
+          element={
+            <ProtectedRoute roles={["faculty"]}>
+              <AnalyticsPage />
             </ProtectedRoute>
           }
         />

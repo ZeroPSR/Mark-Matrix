@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { apiFetch } from "../../lib/api.js";
 import { ROUTES_CYCLE_2 } from "@mark-matrix/shared";
 import { UnlockModal } from "./components/UnlockModal.js";
+import { DownloadTranscriptButton } from "../../components/DownloadTranscriptButton.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface Gradesheet {
@@ -71,7 +72,7 @@ export function GradesheetAdminPage(): JSX.Element {
       </div>
       {result !== null && (
         <table className="gradesheet-admin__students">
-          <thead><tr><th>Student</th><th>SGPA</th><th>Courses</th><th>Credits</th></tr></thead>
+          <thead><tr><th>Student</th><th>SGPA</th><th>Courses</th><th>Credits</th><th>Transcript</th></tr></thead>
           <tbody>
             {result.students.map((s) => (
               <tr key={s.studentId}>
@@ -79,6 +80,12 @@ export function GradesheetAdminPage(): JSX.Element {
                 <td>{s.sgpa.toFixed(2)}</td>
                 <td>{s.courseCount}</td>
                 <td>{s.totalCredits}</td>
+                <td>
+                  <DownloadTranscriptButton
+                    url={ROUTES_CYCLE_2.studentTranscript("admin", batchId, programId, semId, s.studentId)}
+                    label="Download"
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
