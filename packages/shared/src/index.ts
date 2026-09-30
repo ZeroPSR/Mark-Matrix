@@ -63,3 +63,5 @@ export * from "./results.js";
 // the re-export line below resolves at consumer compile time. No consumer
 // imports it yet, so the dangling reference does not affect typecheck.
 export * from "./transitionValidator.js";
+
+export * from "./analytics.js";

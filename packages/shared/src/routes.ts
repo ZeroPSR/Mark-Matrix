@@ -132,6 +132,53 @@ export const ROUTES_CYCLE_2 = {
     semId: string,
   ): string =>
     `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/gradesheet`,
+
+  // Cycle 7 — analytics + transcript route builders.
+  analyticsPassRate: (
+    role: "admin" | "faculty",
+    batchId: string,
+    programId: string,
+    semId: string,
+    courseId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/analytics/pass-rate`,
+
+  analyticsToppers: (
+    role: "admin" | "faculty",
+    batchId: string,
+    programId: string,
+    semId: string,
+    courseId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/analytics/toppers`,
+
+  analyticsAttendanceShortage: (
+    role: "admin" | "faculty",
+    batchId: string,
+    programId: string,
+    semId: string,
+    courseId: string,
+  ): string =>
+    `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/course/${courseId}/analytics/attendance-shortage`,
+
+  analyticsSemSummary: (
+    role: "admin",
+    batchId: string,
+    programId: string,
+    semId: string,
+  ): string =>
+    `/api/admin/batch/${batchId}/program/${programId}/sem/${semId}/analytics/summary`,
+
+  studentTranscript: (
+    role: "student" | "admin",
+    batchId: string,
+    programId: string,
+    semId: string,
+    studentId?: string,
+  ): string =>
+    studentId !== undefined
+      ? `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/student/${studentId}/transcript`
+      : `/api/${role}/batch/${batchId}/program/${programId}/sem/${semId}/transcript`,
 } as const;
 
 // Silence "declared but never used" — attendanceBase is kept exported for
