@@ -55,6 +55,7 @@ export async function upsertCourseGrade(
     gradeLabel: string;
     gradePoint: number;
     gradeSchemeId: string;
+    isPassing: boolean;
   },
 ): Promise<CourseGradeRow> {
   const row = {
@@ -66,6 +67,7 @@ export async function upsertCourseGrade(
     grade_label: args.gradeLabel,
     grade_point: args.gradePoint,
     grade_scheme_id: args.gradeSchemeId,
+    is_passing: args.isPassing,
   };
   const { data, error } = await supabase
     .from("course_grades")

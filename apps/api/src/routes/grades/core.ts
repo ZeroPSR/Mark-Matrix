@@ -125,6 +125,7 @@ async function getCourseGrade(c: Ctx): Promise<Response> {
       gradeLabel: grade.gradeLabel,
       gradePoint: grade.gradePoint,
       gradeSchemeId: schemeBands.schemeId,
+      isPassing: grade.isPassing,
     });
   } catch (e) {
     const m = mapPgError(e as { code?: string; message?: string });

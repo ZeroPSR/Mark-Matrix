@@ -61,6 +61,7 @@ async function ensureCourseGrade(
     gradeLabel: grade.gradeLabel,
     gradePoint: grade.gradePoint,
     gradeSchemeId: schemeBands.schemeId,
+    isPassing: grade.isPassing,
   });
 
   const { data: course, error: courseErr } = await supabase

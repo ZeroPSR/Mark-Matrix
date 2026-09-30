@@ -63,6 +63,7 @@ async function ensureCourseGrade(
     gradeLabel: grade.gradeLabel,
     gradePoint: grade.gradePoint,
     gradeSchemeId: schemeBands.schemeId,
+    isPassing: grade.isPassing,
   });
   const { data: course } = await supabase.from("courses").select("credits").eq("id", courseId).maybeSingle();
   if (!course) return null;
