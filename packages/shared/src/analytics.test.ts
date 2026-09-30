@@ -73,27 +73,27 @@ describe("computeAttendancePct", () => {
 
 describe("topLimitSchema", () => {
   it("defaults to 5 when missing", () => {
-    expect(topLimitSchema.parse(undefined)).toBe(5);
+    expect(topLimitSchema.parse({}).limit).toBe(5);
   });
   it("coerces strings to ints", () => {
-    expect(topLimitSchema.parse("10")).toBe(10);
+    expect(topLimitSchema.parse({ limit: "10" }).limit).toBe(10);
   });
   it("rejects 0 and >50", () => {
-    expect(() => topLimitSchema.parse(0)).toThrow();
-    expect(() => topLimitSchema.parse(51)).toThrow();
+    expect(() => topLimitSchema.parse({ limit: 0 })).toThrow();
+    expect(() => topLimitSchema.parse({ limit: 51 })).toThrow();
   });
 });
 
 describe("attendanceThresholdSchema", () => {
   it("defaults to 75 when missing", () => {
-    expect(attendanceThresholdSchema.parse(undefined)).toBe(75);
+    expect(attendanceThresholdSchema.parse({}).threshold).toBe(75);
   });
   it("accepts 0..100 inclusive", () => {
-    expect(attendanceThresholdSchema.parse(0)).toBe(0);
-    expect(attendanceThresholdSchema.parse(100)).toBe(100);
+    expect(attendanceThresholdSchema.parse({ threshold: 0 }).threshold).toBe(0);
+    expect(attendanceThresholdSchema.parse({ threshold: 100 }).threshold).toBe(100);
   });
   it("rejects out-of-range", () => {
-    expect(() => attendanceThresholdSchema.parse(-1)).toThrow();
-    expect(() => attendanceThresholdSchema.parse(101)).toThrow();
+    expect(() => attendanceThresholdSchema.parse({ threshold: -1 })).toThrow();
+    expect(() => attendanceThresholdSchema.parse({ threshold: 101 })).toThrow();
   });
 });

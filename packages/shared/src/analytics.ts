@@ -47,8 +47,15 @@ export type SemSummaryRow = z.infer<typeof semSummaryRowSchema>;
 
 // Query-param schemas ---------------------------------------------------------
 
-export const topLimitSchema = z.coerce.number().int().min(1).max(50).default(5);
-export const attendanceThresholdSchema = z.coerce.number().min(0).max(100).default(75);
+export const topLimitSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(5),
+});
+export type TopLimit = z.infer<typeof topLimitSchema>;
+
+export const attendanceThresholdSchema = z.object({
+  threshold: z.coerce.number().min(0).max(100).default(75),
+});
+export type AttendanceThreshold = z.infer<typeof attendanceThresholdSchema>;
 
 // Pure compute helpers --------------------------------------------------------
 
