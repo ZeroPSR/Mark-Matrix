@@ -37,6 +37,10 @@ import { courseExamTypesRoute } from "./routes/faculty/courseExamTypes.js";
 import { adminMarksLifecycleRoute } from "./routes/admin/marksLifecycle.js";
 import { adminGradesheetsRoute } from "./routes/admin/gradesheets.js";
 import { studentGradesheetRoute } from "./routes/student/gradesheet.js";
+import { studentTranscriptRoute } from "./routes/student/transcript.js";
+import { analyticsCourseRoute } from "./routes/analytics/course.js";
+import { analyticsSemRoute } from "./routes/analytics/sem.js";
+import { adminExportsRoute } from "./routes/admin/exports.js";
 import { studentEnrollmentRoute } from "./routes/student/enrollment.js";
 import {
   attendanceRoute,
@@ -102,6 +106,15 @@ app.route(
   "/api/admin/batch/:batchId/program/:programId/sem/:semId/gradesheet",
   adminGradesheetsRoute,
 );
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/analytics",
+  analyticsCourseRoute,
+);
+app.route(
+  "/api/admin/batch/:batchId/program/:programId/sem/:semId/analytics",
+  analyticsSemRoute,
+);
+app.route("/api/admin/batch/:batchId/program/:programId/sem/:semId", adminExportsRoute);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
@@ -117,6 +130,10 @@ app.route(
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
   facultyGradesRoute,
+);
+app.route(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/analytics",
+  analyticsCourseRoute,
 );
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/score/sgpa",
@@ -153,6 +170,7 @@ app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/gradesheet",
   studentGradesheetRoute,
 );
+app.route("/api/student/batch/:batchId/program/:programId/sem/:semId", studentTranscriptRoute);
 app.route(
   "/api/student/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
   studentGradesRoute,
