@@ -125,3 +125,21 @@ export function parseEnrollCsv(text: string): ParsedEnrollCsv {
   }
   return out;
 }
+
+/**
+ * RFC4180-ish CSV writer. Quotes any field that contains a comma, double
+ * quote, CR, or LF; doubles embedded double quotes. Joins rows with CRLF and
+ * appends a trailing CRLF so the output is one record per line, terminated.
+ */
+export function toCsv(rows: (string | number | null)[][]): string {
+  if (rows.length === 0) return "";
+  const escape = (v: string | number | null): string => {
+    if (v === null) return "";
+    const s = String(v);
+    if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+  return rows.map((row) => row.map(escape).join(",")).join("\r\n") + "\r\n";
+}

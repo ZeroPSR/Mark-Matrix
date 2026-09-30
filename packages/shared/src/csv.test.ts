@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, parseEnrollCsv } from "./csv.js";
+import { parseCsv, parseEnrollCsv, toCsv } from "./csv.js";
 
 describe("parseCsv", () => {
   it("parses simple comma-separated rows", () => {
@@ -74,5 +74,50 @@ describe("parseEnrollCsv", () => {
     expect(r.rows).toHaveLength(0);
     expect(r.errors[0]?.reason).toBe("validation_failed");
     expect(r.errors[0]?.row).toBe(2);
+  });
+});
+
+describe("toCsv", () => {
+  it("writes a header row + data rows separated by CRLF with trailing CRLF", () => {
+    const out = toCsv([
+      ["name", "age"],
+      ["alice", "30"],
+      ["bob", "25"],
+    ]);
+    expect(out).toBe("name,age\r\nalice,30\r\nbob,25\r\n");
+  });
+
+  it("emits an empty string for an empty input array", () => {
+    expect(toCsv([])).toBe("");
+  });
+
+  it("quotes and escapes a field with an embedded comma", () => {
+    expect(toCsv([["a", "b,c"]])).toBe('a,"b,c"\r\n');
+  });
+
+  it("quotes and escapes a field with an embedded double-quote", () => {
+    expect(toCsv([['he said "hi"']])).toBe('"he said ""hi"""\r\n');
+  });
+
+  it("quotes and escapes a field with an embedded newline", () => {
+    expect(toCsv([["line1\nline2"]])).toBe('"line1\nline2"\r\n');
+  });
+
+  it("renders null as an empty field", () => {
+    expect(toCsv([["a", null, "c"]])).toBe("a,,c\r\n");
+  });
+
+  it("renders numbers without quoting when safe", () => {
+    expect(toCsv([["n", 42]])).toBe("n,42\r\n");
+  });
+
+  it("roundtrips with parseCsv for a typical analytics report", () => {
+    const rows = [
+      ["student", "percentage", "grade"],
+      ["23BCA001", "92.5", "A"],
+      ["23BCA002", "67.0", "C"],
+    ];
+    const parsed = parseCsv(toCsv(rows));
+    expect(parsed).toEqual(rows);
   });
 });
