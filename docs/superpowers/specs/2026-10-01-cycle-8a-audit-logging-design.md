@@ -14,7 +14,7 @@
 - A `SECURITY DEFINER` Postgres function `audit_log_write(...)` as the single entry point for inserting audit rows. The API never inserts into `audit_log` directly.
 - A TypeScript helper `recordAudit(supabase, params)` in `apps/api/src/lib/auditLog.ts` that wraps the RPC.
 - RLS on `audit_log`: admin can `SELECT`; no role can `INSERT/UPDATE/DELETE` (writes go through the definer function).
-- Instrumentation of 22 sensitive write paths across 7 route files.
+- Instrumentation of 22 sensitive write paths across 9 route files.
 - Best-effort semantics: an audit-insert failure is logged to stderr but never fails the data write.
 - 9 new test files covering helper unit tests, `audit_log` RLS, and per-handler audit emission.
 
@@ -25,7 +25,7 @@
 - Production deployment, monitoring hooks, rollback plan — **cycle 8c**.
 - Capturing IP / user-agent / request ID in audit rows — future, schema can grow a `metadata jsonb` column without breaking existing rows.
 - A higher-order `withAudit(...)` wrapper to reduce caller boilerplate — only worth adding if the 3-line caller pattern proves painful in practice.
-- Auditing `course_exam_type` writes — there are no production write endpoints yet (tests insert directly). Helper types include the entity so it works when endpoints land.
+- Auditing `course_exam_type` writes — there are no production write endpoints yet (tests insert directly). The entity is intentionally absent from both the `audit_log.entity` CHECK constraint and the `AuditEntity` union; we'll widen both together when endpoints land.
 
 ---
 
@@ -207,7 +207,7 @@ export async function recordAudit(
 
 ## 4. Handler Integration List
 
-22 write paths across 7 files. For each, the integration is **fetch before → mutate → recordAudit** (3 lines per handler). Where marked "fetch before", an extra `SELECT` is added to capture `oldValue`. Where marked "reuse", the existing handler already fetches the row for another purpose and we capture the snapshot at that point.
+22 write paths across 9 route files. For each, the integration is **fetch before → mutate → recordAudit** (3 lines per handler). Where marked "fetch before", an extra `SELECT` is added to capture `oldValue`. Where marked "reuse", the existing handler already fetches the row for another purpose and we capture the snapshot at that point.
 
 | # | File | Handler | Method/Path | Action | Entity | Snapshot strategy |
 |---|---|---|---|---|---|---|
