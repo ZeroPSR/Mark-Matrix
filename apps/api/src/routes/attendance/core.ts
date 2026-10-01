@@ -9,6 +9,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 type Ctx = Context<AppEnv>;
 
@@ -65,6 +66,16 @@ async function bulkMark(c: Ctx): Promise<Response> {
     const m = mapPgError(error);
     return c.json(m.body, m.status);
   }
+  // Cycle 8a: emit one audit row per upserted attendance row.
+  for (const row of (data ?? []) as unknown as { id: string }[]) {
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "attendance",
+      entityId: row.id,
+      oldValue: null,
+      newValue: row,
+    });
+  }
   return c.json(
     { data: (data ?? []).map((r) => fromRow(r as unknown as Row)) },
     201,
@@ -93,6 +104,19 @@ async function patchOne(c: Ctx): Promise<Response> {
     return c.json(m.body, m.status);
   }
   if (!data) return c.json({ error: "not_found" }, 404);
+  // Cycle 8a: emit update audit row. Fetch before for oldValue.
+  const { data: before } = await supabase
+    .from("attendance")
+    .select("id, course_id, student_id, session_date, status, recorded_by, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  await recordAudit(supabase, {
+    action: "update",
+    entity: "attendance",
+    entityId: id,
+    oldValue: before,
+    newValue: data,
+  });
   return c.json({ data: fromRow(data as unknown as Row) });
 }
 
