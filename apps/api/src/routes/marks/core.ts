@@ -11,6 +11,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 type Ctx = Context<AppEnv>;
 
@@ -135,6 +136,16 @@ async function bulkUpsert(c: Ctx): Promise<Response> {
     const m = mapPgError(error);
     return c.json(m.body, m.status);
   }
+  // Cycle 8a: emit one audit row per upserted marks row.
+  for (const row of (data ?? []) as unknown as { id: string }[]) {
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "marks",
+      entityId: row.id,
+      oldValue: null,
+      newValue: row,
+    });
+  }
   return c.json(
     { data: (data ?? []).map((r) => fromRow(r as unknown as DbMarksRow)) },
     201,
@@ -194,6 +205,14 @@ async function patchOne(c: Ctx): Promise<Response> {
     return c.json(m.body, m.status);
   }
   if (!data) return c.json({ error: "not_found" }, 404);
+  // Cycle 8a: emit update audit row. Reuse existing pre-fetch as oldValue.
+  await recordAudit(supabase, {
+    action: "update",
+    entity: "marks",
+    entityId: id,
+    oldValue: existing,
+    newValue: data,
+  });
   return c.json({ data: fromRow(data as unknown as DbMarksRow) });
 }
 
@@ -240,6 +259,16 @@ async function submitCourse(c: Ctx): Promise<Response> {
   if (error) {
     const m = mapPgError(error);
     return c.json(m.body, m.status);
+  }
+  // Cycle 8a: emit submit audit per flipped row.
+  for (const row of (data ?? []) as unknown as { id: string }[]) {
+    await recordAudit(supabase, {
+      action: "submit",
+      entity: "marks",
+      entityId: row.id,
+      oldValue: { ...row, status: "draft" },
+      newValue: row,
+    });
   }
   return c.json({ submitted: (data ?? []).length });
 }
@@ -396,10 +425,23 @@ async function bulkUpload(c: Ctx): Promise<Response> {
   const { data: upserted, error: upErr } = await supabase
     .from("marks")
     .upsert(upsertRows, { onConflict: "course_id,student_id,exam_type" })
-    .select("id");
+    .select("id, course_id, student_id, exam_type, marks_obtained, max_marks, entered_by, status, updated_at");
   if (upErr) {
     const m = mapPgError(upErr);
     return c.json(m.body, m.status);
+  }
+  // Cycle 8a: emit create audit per successfully upserted row.
+  // Note: bulkUpload emits `create` for all rows; the create-vs-update
+  // split for upserts is deferred to a future enhancement (the plan's
+  // §4.3 documents this).
+  for (const row of (upserted ?? []) as unknown as { id: string }[]) {
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "marks",
+      entityId: row.id,
+      oldValue: null,
+      newValue: row,
+    });
   }
   out.succeeded = (upserted ?? []).length;
   return c.json(out);

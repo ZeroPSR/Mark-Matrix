@@ -23,6 +23,7 @@ export function makeAuditMockSupabase(opts: {
     const b: Record<string, unknown> = {
       select() { return b; },
       eq(col: string, val: unknown) { calls.eq.push({ col, val }); return b; },
+      neq() { return b; },
       in() { return b; },
       update(arg: unknown) { calls.update.push({ arg }); return b; },
       upsert(arg: unknown) { calls.update.push({ arg }); return b; },
