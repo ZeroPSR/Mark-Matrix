@@ -197,7 +197,7 @@ The current implementation uses an in-memory `Map` (per-isolate state). Replace 
 
 **Free-tier consideration:** Cloudflare KV free tier allows 1,000 writes/day. Each request does one write. At a sustained 1 req/sec across the day, we hit 86,400 writes — well over the limit. The `RATE_LIMIT_BACKEND=memory` env var lets you flip to in-memory if you hit the free-tier ceiling. **Recommend paid plan for prod** (Workers Paid includes 1M KV writes/day).
 
-**Mount in `apps/api/src/index.ts`:** no change to the route mounts; the `generalRateLimit` / `bulkRateLimit` exports continue to be the middleware functions, but they now read `RATE_LIMIT_BACKEND` and switch on it.
+**Mount in `apps/api/src/index.ts`:** no change to the route mounts; the `generalRateLimit` / `bulkRateLimit` exports continue to be the middleware functions, but their implementation now reads `RATE_LIMIT_BACKEND` (and `c.env.RATE_LIMIT` for the KV binding) and switches between the in-memory and KV backends.
 
 ---
 
