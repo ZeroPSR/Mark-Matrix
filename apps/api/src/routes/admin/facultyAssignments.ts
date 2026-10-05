@@ -6,6 +6,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 export interface FacultyAssignment {
   id: string;
@@ -71,11 +72,26 @@ export const adminFacultyAssignmentsRoute = new Hono<AppEnv>()
       const m = mapPgError(error);
       return c.json(m.body, m.status);
     }
+    // Cycle 8a: emit create audit.
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "faculty_assignment",
+      entityId: (data as unknown as { id: string }).id,
+      oldValue: null,
+      newValue: data,
+    });
     return c.json({ data: fromRow(data as unknown as Row) }, 201);
   })
   .delete("/:id", async (c) => {
     const supabase = c.get("supabase");
     const id = c.req.param("id");
+    // Cycle 8a: fetch before.
+    const { data: before } = await supabase
+      .from("faculty_assignments")
+      .select("id, faculty_id, course_id, assigned_date")
+      .eq("id", id)
+      .maybeSingle();
+    if (!before) return c.json({ error: "not_found" }, 404);
     const { error } = await supabase
       .from("faculty_assignments")
       .delete()
@@ -84,5 +100,13 @@ export const adminFacultyAssignmentsRoute = new Hono<AppEnv>()
       const m = mapPgError(error, { hasDependents: true });
       return c.json(m.body, m.status);
     }
+    // Cycle 8a: emit delete audit.
+    await recordAudit(supabase, {
+      action: "delete",
+      entity: "faculty_assignment",
+      entityId: id,
+      oldValue: before,
+      newValue: null,
+    });
     return c.body(null, 204);
   });
