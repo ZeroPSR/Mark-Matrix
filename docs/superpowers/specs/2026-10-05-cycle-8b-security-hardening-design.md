@@ -34,7 +34,7 @@
 - `(user_id, created_at DESC)` for `WHERE user_id = ?`
 - `(created_at DESC)` for date-range and unfiltered queries
 
-**One small API extension:** the existing `GET /api/admin/users` route currently returns `user_id, name, role`. The audit-log UI needs to show user emails, so we extend the response to include `email` (read from `auth.users` via the service-role or a SECURITY DEFINER view). This is a small additive change inside the 8b code path; it does not break the existing admin users UI which ignores extra fields.
+**One small API extension:** the existing `GET /api/admin/users` route currently returns `user_id, name, role` (read from `public.profiles` via the RLS-bound client). The audit-log UI needs to show user emails, so we extend the response to include `email`. The RLS-bound client cannot read `auth.users` for arbitrary users, so this uses a service-role Supabase client constructed from `env.SUPABASE_SERVICE_ROLE_KEY` (admin-only endpoint, the key is server-side only and never reaches the React bundle — verified by the secret-scan section of the review report). The service-role client is created in a small helper `apps/api/src/lib/serviceRoleClient.ts` and used only by the extended users route. This is a small additive change inside the 8b code path; it does not break the existing admin users UI which ignores extra fields.
 
 ---
 
