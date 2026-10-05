@@ -8,6 +8,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 type Ctx = Context<AppEnv>;
 
@@ -151,6 +152,14 @@ async function createScheme(c: Ctx): Promise<Response> {
     const m = mapPgError(error);
     return c.json(m.body, m.status);
   }
+  // Cycle 8a: emit create audit.
+  await recordAudit(supabase, {
+    action: "create",
+    entity: "grade_scheme",
+    entityId: (data as unknown as { id: string }).id,
+    oldValue: null,
+    newValue: data,
+  });
   return c.json({ data: fromRow(data as unknown as DbRow) }, 201);
 }
 
@@ -172,18 +181,20 @@ async function patchScheme(c: Ctx): Promise<Response> {
   if (parsed.data.isPassing !== undefined) upd["is_passing"] = parsed.data.isPassing;
 
   // If min/max changed, check overlap against siblings.
+  let existing: DbRow | null = null;
   if (parsed.data.minMarks !== undefined || parsed.data.maxMarks !== undefined) {
-    const { data: existing, error: fetchErr } = await supabase
+    const { data: existingRow, error: fetchErr } = await supabase
       .from("grade_schemes")
       .select(SELECT_COLS)
       .eq("id", id)
       .maybeSingle();
+    existing = (existingRow as unknown as DbRow) ?? null;
     if (fetchErr) {
       const m = mapPgError(fetchErr);
       return c.json(m.body, m.status);
     }
     if (!existing) return c.json({ error: "not_found" }, 404);
-    const ex = existing as unknown as DbRow;
+    const ex = existing;
     const newMin = parsed.data.minMarks ?? Number(ex.min_marks);
     const newMax = parsed.data.maxMarks ?? Number(ex.max_marks);
     if (newMin > newMax) {
@@ -217,6 +228,14 @@ async function patchScheme(c: Ctx): Promise<Response> {
     return c.json(m.body, m.status);
   }
   if (!data) return c.json({ error: "not_found" }, 404);
+  // Cycle 8a: emit update audit; reuse `existing` from the overlap check if available.
+  await recordAudit(supabase, {
+    action: "update",
+    entity: "grade_scheme",
+    entityId: id,
+    oldValue: existing ?? null,
+    newValue: data,
+  });
   return c.json({ data: fromRow(data as unknown as DbRow) });
 }
 
@@ -235,11 +254,26 @@ async function deleteScheme(c: Ctx): Promise<Response> {
   if ((count ?? 0) > 0) {
     return c.json({ error: "has_dependents", detail: `${count} course_grades reference this scheme` }, 409);
   }
+  // Cycle 8a: fetch before for oldValue.
+  const { data: before } = await supabase
+    .from("grade_schemes")
+    .select(SELECT_COLS)
+    .eq("id", id)
+    .maybeSingle();
+  if (!before) return c.json({ error: "not_found" }, 404);
   const { error } = await supabase.from("grade_schemes").delete().eq("id", id);
   if (error) {
     const m = mapPgError(error);
     return c.json(m.body, m.status);
   }
+  // Cycle 8a: emit delete audit.
+  await recordAudit(supabase, {
+    action: "delete",
+    entity: "grade_scheme",
+    entityId: id,
+    oldValue: before,
+    newValue: null,
+  });
   return c.json({ deleted: id });
 }
 
