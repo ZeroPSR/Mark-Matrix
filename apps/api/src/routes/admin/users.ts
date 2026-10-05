@@ -7,6 +7,7 @@ import {
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
 import { recordAudit } from "../../lib/auditLog.js";
+import { getServiceRoleClient } from "../../lib/serviceRoleClient.js";
 
 export const adminUsersRoute = new Hono<AppEnv>()
   .get("/", async (c) => {
@@ -21,7 +22,26 @@ export const adminUsersRoute = new Hono<AppEnv>()
       console.error("admin users: profiles read failed", error.message);
       return c.json({ error: "profiles_read_failed", detail: error.message }, 500);
     }
-    return c.json({ users: data });
+    // Cycle 8b: read emails from auth.users via the service-role client
+    // (the RLS-bound client cannot read other users' auth.users rows).
+    // The service-role key is server-side only; verified by the cycle-8b
+    // security review's secret-scan section.
+    const service = getServiceRoleClient(c.env);
+    const { data: authData, error: authErr } = await service.auth.admin.listUsers();
+    if (authErr) {
+      console.error("admin users: auth.users read failed", authErr.message);
+      // Non-fatal: return profiles without emails.
+      return c.json({ users: data });
+    }
+    const emailByUserId = new Map<string, string>();
+    for (const u of authData.users) {
+      if (u.email) emailByUserId.set(u.id, u.email);
+    }
+    const enriched = (data ?? []).map((row) => {
+      const r = row as { user_id: string; name: string; role: string };
+      return { ...r, email: emailByUserId.get(r.user_id) ?? null };
+    });
+    return c.json({ users: enriched });
   })
   .patch("/:userId", async (c) => {
     const supabase = c.get("supabase");

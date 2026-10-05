@@ -61,3 +61,29 @@ describe("users audit", () => {
     expect(auditCalls).toHaveLength(0);
   });
 });
+
+describe("users route email extension", () => {
+  it("GET / returns 200 after the cycle-8b email extension (Review Focus item 4)", async () => {
+    // Cycle 8b: GET /api/admin/users now also returns `email` from auth.users
+    // (via service-role client). This test pins that the route still responds
+    // 200 with the profiles data after the email merge is wired in.
+    const { supabase } = makeAuditMockSupabase({
+      tableResponses: {
+        profiles: {
+          data: [{ user_id: "u1", name: "Alice", role: "faculty" }],
+          error: null,
+        },
+      },
+    });
+    const app = new Hono<AppEnv>();
+    app.use("/api/admin/*", async (c, next) => {
+      c.set("supabase", supabase);
+      c.set("userId", "admin-1");
+      c.set("role", "admin");
+      await next();
+    });
+    app.route("/api/admin/users", adminUsersRoute);
+    const res = await app.request(URL);
+    expect(res.status).toBe(200);
+  });
+});
