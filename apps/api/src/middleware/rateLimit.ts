@@ -68,10 +68,8 @@ async function kvRateLimitInner(
   c: Parameters<MiddlewareHandler<AppEnv>>[0],
   next: Parameters<MiddlewareHandler<AppEnv>>[1],
   opts: { scope: string; limit: number },
-): Promise<Response | undefined> {
-  const kv = c.env?.RATE_LIMIT as
-    | { get: (k: string) => Promise<string | null>; put: (k: string, v: string, opts?: { expirationTtl?: number }) => Promise<unknown> }
-    | undefined;
+): Promise<Response | void> {
+  const kv = c.env.RATE_LIMIT;
   if (!kv) {
     return (opts.scope === "bulk" ? getRealBulk() : getRealGeneral())(c, next);
   }
