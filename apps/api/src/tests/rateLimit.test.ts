@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Hono } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { generalRateLimit, bulkRateLimit } from "../middleware/rateLimit.js";
 import type { AppEnv } from "../env.js";
 
-function mountWithLimit(limit: Parameters<Hono<AppEnv>["use"]>[0]): Hono<AppEnv> {
+function mountWithLimit(limit: MiddlewareHandler<AppEnv>): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   app.use("/api/*", limit);
   app.get("/api/test", (c) => c.json({ ok: true }));
