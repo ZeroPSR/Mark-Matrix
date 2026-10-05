@@ -36,6 +36,7 @@ import { facultyCoursesRoute } from "./routes/faculty/courses.js";
 import { courseExamTypesRoute } from "./routes/faculty/courseExamTypes.js";
 import { adminMarksLifecycleRoute } from "./routes/admin/marksLifecycle.js";
 import { adminGradesheetsRoute } from "./routes/admin/gradesheets.js";
+import { adminAuditLogRoute } from "./routes/admin/auditLog.js";
 import { studentGradesheetRoute } from "./routes/student/gradesheet.js";
 import { studentTranscriptRoute } from "./routes/student/transcript.js";
 import { analyticsCourseRoute } from "./routes/analytics/course.js";
@@ -115,6 +116,7 @@ app.route(
   analyticsSemRoute,
 );
 app.route("/api/admin/batch/:batchId/program/:programId/sem/:semId", adminExportsRoute);
+app.route("/api/admin/audit-log", adminAuditLogRoute);
 
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
