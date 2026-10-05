@@ -1,9 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import {
-  auditLogListQuerySchema,
-  type AuditLogRow,
-  type AuditLogListResponse,
-} from "@mark-matrix/shared";
+import type { AuditLogRow, AuditLogListResponse } from "@mark-matrix/shared";
 
 const PAGE_SIZE = 50;
 
