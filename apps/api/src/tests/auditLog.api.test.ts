@@ -117,6 +117,7 @@ describe("toCsv (csv writer unit)", () => {
   it("escapes quotes and wraps fields containing commas/quotes/newlines", () => {
     const csv = toCsv([
       {
+        id: 1,
         created_at: "2026-10-05T10:00:00Z",
         user_id: "u1",
         action: "update",
