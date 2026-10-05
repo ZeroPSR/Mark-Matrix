@@ -1,8 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { generalRateLimit, bulkRateLimit } from "../middleware/rateLimit.js";
 import type { AppEnv } from "../env.js";
+
+// Re-enable rate limiting for these tests (the vitest config sets
+// DISABLE_RATE_LIMIT=1 by default to keep the rest of the suite fast).
+beforeAll(() => {
+  process.env["DISABLE_RATE_LIMIT"] = "0";
+});
+afterAll(() => {
+  process.env["DISABLE_RATE_LIMIT"] = "1";
+});
 
 function mountWithLimit(limit: MiddlewareHandler<AppEnv>): Hono<AppEnv> {
   const app = new Hono<AppEnv>();

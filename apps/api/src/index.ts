@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { API_ROUTES, ROUTES_CYCLE_2 } from "@mark-matrix/shared";
 import { supabaseAuth } from "./middleware/auth.js";
 import { requireRole } from "./middleware/requireRole.js";
+import { generalRateLimit, bulkRateLimit } from "./middleware/rateLimit.js";
 import { adminUsersRoute } from "./routes/admin/users.js";
 import { adminBatchesRoute } from "./routes/admin/batches.js";
 import { adminProgramsRoute } from "./routes/admin/programs.js";
@@ -79,6 +80,7 @@ app.use(
 app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 app.use("/api/*", supabaseAuth);
+app.use("/api/*", generalRateLimit);
 app.get(API_ROUTES.me, (c) => c.json({ userId: c.get("userId"), role: c.get("role") }));
 
 app.use("/api/admin/*", requireRole("admin"));
@@ -93,6 +95,7 @@ app.route(ROUTES_CYCLE_2.adminAdmins, adminAdminsRoute);
 app.route(ROUTES_CYCLE_2.adminFacultyAssignments, adminFacultyAssignmentsRoute);
 app.route(ROUTES_CYCLE_2.adminEnrollments, adminEnrollmentsRoute);
 app.route(ROUTES_CYCLE_2.adminBulkEnroll, adminBulkEnrollRoute);
+app.use(ROUTES_CYCLE_2.adminBulkEnroll, bulkRateLimit);
 app.route(ROUTES_CYCLE_2.adminGradeSchemes, adminGradeSchemesRoute);
 app.route(
   "/api/admin/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
@@ -128,6 +131,10 @@ app.route(
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
   marksRoute,
+);
+app.use(
+  "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks/bulk",
+  bulkRateLimit,
 );
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/marks",
