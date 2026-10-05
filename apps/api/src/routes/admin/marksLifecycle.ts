@@ -9,6 +9,7 @@ import {
   type UnlockMarksResponse,
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 type Ctx = Context<AppEnv>;
 
@@ -21,7 +22,7 @@ async function runStatusFlip(
     clearColumns: string[];
   },
 ): Promise<
-  | { ok: true; rowsAffected: number }
+  | { ok: true; rows: Record<string, unknown>[] }
   | { ok: false; status: ContentfulStatusCode; body: { error: string; detail?: string } }
 > {
   const supabase = c.get("supabase");
@@ -38,7 +39,7 @@ async function runStatusFlip(
     .update(updateObj)
     .eq("course_id", courseId)
     .eq("status", args.fromStatus)
-    .select("id");
+    .select("id, course_id, student_id, exam_type, status, marks_obtained, max_marks, entered_by, approved_by, approved_at, locked_by, locked_at, updated_at");
   if (error) {
     const mapped = mapPgError(error);
     if (mapped.body.error === "internal_error" && (error.message ?? "").includes("marks_data_locked")) {
@@ -49,11 +50,11 @@ async function runStatusFlip(
     }
     return { ok: false, status: mapped.status, body: mapped.body };
   }
-  const rows = (data ?? []) as unknown as { id: string }[];
+  const rows = (data ?? []) as unknown as Record<string, unknown>[];
   if (rows.length === 0) {
     return { ok: false, status: 409, body: { error: "invalid_state_transition", detail: `no rows at ${args.fromStatus}` } };
   }
-  return { ok: true, rowsAffected: rows.length };
+  return { ok: true, rows };
 }
 
 /**
@@ -79,6 +80,7 @@ async function approve(c: Ctx): Promise<Response> {
   const badJson = await rejectBadJson(c);
   if (badJson) return badJson;
 
+  const supabase = c.get("supabase");
   const userId = c.get("userId");
   const now = new Date().toISOString();
   const r = await runStatusFlip(c, {
@@ -88,8 +90,18 @@ async function approve(c: Ctx): Promise<Response> {
     clearColumns: ["locked_by", "locked_at"],
   });
   if (!r.ok) return c.json(r.body, r.status);
+  // Cycle 8a: emit approve audit per flipped row.
+  for (const row of r.rows) {
+    await recordAudit(supabase, {
+      action: "approve",
+      entity: "marks",
+      entityId: row["id"] as string,
+      oldValue: { ...row, status: "submitted", approved_by: null, approved_at: null },
+      newValue: row,
+    });
+  }
   const resp: ApproveMarksResponse = {
-    approved: r.rowsAffected,
+    approved: r.rows.length,
     approvedBy: userId,
     approvedAt: now,
   };
@@ -100,6 +112,7 @@ async function lock(c: Ctx): Promise<Response> {
   const badJson = await rejectBadJson(c);
   if (badJson) return badJson;
 
+  const supabase = c.get("supabase");
   const userId = c.get("userId");
   const now = new Date().toISOString();
   const r = await runStatusFlip(c, {
@@ -109,8 +122,18 @@ async function lock(c: Ctx): Promise<Response> {
     clearColumns: [],
   });
   if (!r.ok) return c.json(r.body, r.status);
+  // Cycle 8a: emit lock audit per flipped row.
+  for (const row of r.rows) {
+    await recordAudit(supabase, {
+      action: "lock",
+      entity: "marks",
+      entityId: row["id"] as string,
+      oldValue: { ...row, status: "approved", locked_by: null, locked_at: null },
+      newValue: row,
+    });
+  }
   const resp: LockMarksResponse = {
-    locked: r.rowsAffected,
+    locked: r.rows.length,
     lockedBy: userId,
     lockedAt: now,
   };
@@ -126,6 +149,7 @@ async function unlock(c: Ctx): Promise<Response> {
       400,
     );
   }
+  const supabase = c.get("supabase");
   const userId = c.get("userId");
   const now = new Date().toISOString();
   const r = await runStatusFlip(c, {
@@ -135,13 +159,21 @@ async function unlock(c: Ctx): Promise<Response> {
     clearColumns: ["locked_by", "locked_at"],
   });
   if (!r.ok) return c.json(r.body, r.status);
+  // Cycle 8a: emit unlock audit per flipped row, capturing reason in new_value.
+  for (const row of r.rows) {
+    await recordAudit(supabase, {
+      action: "unlock",
+      entity: "marks",
+      entityId: row["id"] as string,
+      oldValue: { ...row, status: "locked", locked_by: row["locked_by"], locked_at: row["locked_at"] },
+      newValue: { ...row, unlock_reason: parsed.data.reason },
+    });
+  }
   const resp: UnlockMarksResponse = {
-    unlocked: r.rowsAffected,
+    unlocked: r.rows.length,
     unlockedBy: userId,
     unlockedAt: now,
   };
-  // The reason is recorded in the API access log + (cycle 8) audit_log.
-  // For now we surface it back to the caller so the UI can confirm receipt.
   return c.json({ ...resp, reason: parsed.data.reason });
 }
 
