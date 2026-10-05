@@ -5,5 +5,11 @@
   "name": "mark-matrix-web",
   "compatibility_date": "2025-09-23",
   "pages_build_output_dir": "./dist",
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Cycle 8c: VITE_API_ORIGIN is inlined into the build at compile time.
+  // Replace `api.mark-matrix.example.com` with the real API host before
+  // deploying. If using the default `*.workers.dev` URL, paste that here.
+  "vars": {
+    "VITE_API_ORIGIN": "https://api.mark-matrix.example.com"
+  }
 }
