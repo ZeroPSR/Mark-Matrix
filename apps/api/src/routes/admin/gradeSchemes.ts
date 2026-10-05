@@ -232,7 +232,7 @@ async function patchScheme(c: Ctx): Promise<Response> {
   await recordAudit(supabase, {
     action: "update",
     entity: "grade_scheme",
-    entityId: id,
+    entityId: id as string,
     oldValue: existing ?? null,
     newValue: data,
   });
@@ -270,7 +270,7 @@ async function deleteScheme(c: Ctx): Promise<Response> {
   await recordAudit(supabase, {
     action: "delete",
     entity: "grade_scheme",
-    entityId: id,
+    entityId: id as string,
     oldValue: before,
     newValue: null,
   });

@@ -209,7 +209,7 @@ async function patchOne(c: Ctx): Promise<Response> {
   await recordAudit(supabase, {
     action: "update",
     entity: "marks",
-    entityId: id,
+    entityId: id as string,
     oldValue: existing,
     newValue: data,
   });
