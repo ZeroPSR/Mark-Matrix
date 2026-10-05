@@ -6,6 +6,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 export const adminUsersRoute = new Hono<AppEnv>()
   .get("/", async (c) => {
@@ -36,6 +37,14 @@ export const adminUsersRoute = new Hono<AppEnv>()
     const update: Record<string, unknown> = {};
     if (parsed.data.role !== undefined) update["role"] = parsed.data.role;
     if (parsed.data.name !== undefined) update["name"] = parsed.data.name;
+
+    // Cycle 8a: fetch before for oldValue.
+    const { data: before } = await supabase
+      .from(PROFILE_TABLE)
+      .select("user_id, name, role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
     const { data, error } = await supabase
       .from(PROFILE_TABLE)
       .update(update)
@@ -47,5 +56,15 @@ export const adminUsersRoute = new Hono<AppEnv>()
       return c.json(m.body, m.status);
     }
     if (!data) return c.json({ error: "not_found" }, 404);
+
+    // Cycle 8a: emit update audit.
+    await recordAudit(supabase, {
+      action: "update",
+      entity: "user",
+      entityId: userId,
+      oldValue: before,
+      newValue: data,
+    });
+
     return c.json({ data });
   });
