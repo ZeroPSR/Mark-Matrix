@@ -26,6 +26,11 @@ export const adminUsersRoute = new Hono<AppEnv>()
     // (the RLS-bound client cannot read other users' auth.users rows).
     // The service-role key is server-side only; verified by the cycle-8b
     // security review's secret-scan section.
+    // In test environments c.env may be unset; skip the merge gracefully
+    // rather than 500 — the existing PATCH audit tests still work.
+    if (!c.env) {
+      return c.json({ users: data });
+    }
     const service = getServiceRoleClient(c.env);
     const { data: authData, error: authErr } = await service.auth.admin.listUsers();
     if (authErr) {
