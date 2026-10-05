@@ -1,18 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AuditAction, AuditEntity } from "@mark-matrix/shared";
 
-export type AuditAction =
-  | "create" | "update" | "delete"
-  | "submit" | "approve" | "lock" | "unlock"
-  | "compile" | "publish";
-
-export type AuditEntity =
-  | "attendance"
-  | "marks"
-  | "gradesheet"
-  | "enrollment"
-  | "faculty_assignment"
-  | "user"
-  | "grade_scheme";
+export type { AuditAction, AuditEntity };
 
 export interface AuditParams {
   action: AuditAction;
