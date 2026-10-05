@@ -15,6 +15,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Results",       to: "/admin/results",                  roles: ["admin"] },
   { label: "Gradesheets",   to: "/admin/gradesheets/b1/p1/s1",     roles: ["admin"] },
   { label: "Analytics",     to: "/admin/analytics/b1/p1/s1",       roles: ["admin"] },
+  { label: "Audit Log",     to: "/admin/audit-log",         roles: ["admin"] },
   { label: "My Courses",   to: "/faculty/courses",        roles: ["faculty"] },
   { label: "Analytics",    to: "/faculty/analytics",      roles: ["faculty"] },
   { label: "My Results",   to: "/student/results",        roles: ["student"] },

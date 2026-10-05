@@ -12,6 +12,7 @@ import { EnrollmentsPage } from "./pages/admin/EnrollmentsPage.js";
 import { ResultsReviewPage } from "./pages/admin/ResultsReviewPage.js";
 import { GradesheetAdminPage } from "./pages/admin/GradesheetAdminPage.js";
 import { AnalyticsDashboardPage } from "./pages/admin/AnalyticsDashboardPage.js";
+import { AuditLogPage } from "./pages/admin/AuditLogPage.js";
 import { FacultyCoursesPage } from "./pages/faculty/FacultyCoursesPage.js";
 import { FacultyMarkAttendancePage } from "./pages/faculty/MarkAttendancePage.js";
 import { RosterAttendancePage } from "./pages/faculty/RosterAttendancePage.js";
@@ -88,6 +89,14 @@ export function App(): JSX.Element {
           element={
             <ProtectedRoute roles={["admin"]}>
               <AnalyticsDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/audit-log"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AuditLogPage />
             </ProtectedRoute>
           }
         />
