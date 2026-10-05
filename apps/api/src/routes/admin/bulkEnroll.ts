@@ -4,6 +4,7 @@ import { formatZodError, parseEnrollCsv } from "@mark-matrix/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 const bulkEnrollBodySchema = z.object({
   semId: z.string().uuid(),
@@ -108,14 +109,16 @@ export const adminBulkEnrollRoute = new Hono<AppEnv>().post("/", async (c) => {
       out.errors.push({ row: r.row, rollNumber: r.rollNumber, reason: "already_enrolled" });
       continue;
     }
-    const { error: insertErr } = await supabase
+    const { data: insertedRow, error: insertErr } = await supabase
       .from("student_enrollments")
       .insert({
         student_id: userId,
         sem_id: semId,
         batch_id: batchId,
         program_id: programId,
-      });
+      })
+      .select()
+      .single();
     if (insertErr) {
       const mapped = mapPgError(insertErr);
       out.errors.push({
@@ -134,6 +137,14 @@ export const adminBulkEnrollRoute = new Hono<AppEnv>().post("/", async (c) => {
     }
     out.enrolled += 1;
     alreadyEnrolled.add(userId);
+    // Cycle 8a: emit create audit per successfully inserted row.
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "enrollment",
+      entityId: (insertedRow as unknown as { id: string }).id,
+      oldValue: null,
+      newValue: insertedRow,
+    });
   }
   return c.json(out);
 });

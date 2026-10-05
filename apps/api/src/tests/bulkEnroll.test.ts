@@ -35,7 +35,16 @@ function makeFakeSupabase(opts?: {
         select: () => ({
           eq: () => Promise.resolve({ data: existing, error: null }),
         }),
-        insert: () => Promise.resolve({ error: null }),
+        // Cycle 8a: insert(...).select().single() returns the inserted row.
+        insert: () => ({
+          select: () => ({
+            single: () =>
+              Promise.resolve({
+                data: { id: "inserted-id-1", student_id: "u-1" },
+                error: null,
+              }),
+          }),
+        }),
       };
     }
     if (t === "student_profiles") {

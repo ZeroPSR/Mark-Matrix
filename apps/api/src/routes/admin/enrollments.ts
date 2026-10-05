@@ -7,6 +7,7 @@ import {
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
 import { mapPgError } from "../../lib/pgErrors.js";
+import { recordAudit } from "../../lib/auditLog.js";
 
 export interface Enrollment {
   id: string;
@@ -112,11 +113,26 @@ export const adminEnrollmentsRoute = new Hono<AppEnv>()
       const m = mapPgError(error);
       return c.json(m.body, m.status);
     }
+    // Cycle 8a: emit create audit with the new row as newValue.
+    await recordAudit(supabase, {
+      action: "create",
+      entity: "enrollment",
+      entityId: (data as unknown as { id: string }).id,
+      oldValue: null,
+      newValue: data,
+    });
     return c.json({ data: fromRow(data as unknown as Row) }, 201);
   })
   .delete("/:id", async (c) => {
     const supabase = c.get("supabase");
     const id = c.req.param("id");
+    // Cycle 8a: fetch before for oldValue.
+    const { data: before } = await supabase
+      .from("student_enrollments")
+      .select("id, student_id, batch_id, program_id, sem_id, enrollment_date")
+      .eq("id", id)
+      .maybeSingle();
+    if (!before) return c.json({ error: "not_found" }, 404);
     const { error } = await supabase
       .from("student_enrollments")
       .delete()
@@ -125,5 +141,13 @@ export const adminEnrollmentsRoute = new Hono<AppEnv>()
       const m = mapPgError(error, { hasDependents: true });
       return c.json(m.body, m.status);
     }
+    // Cycle 8a: emit delete audit.
+    await recordAudit(supabase, {
+      action: "delete",
+      entity: "enrollment",
+      entityId: id,
+      oldValue: before,
+      newValue: null,
+    });
     return c.body(null, 204);
   });

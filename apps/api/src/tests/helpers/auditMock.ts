@@ -5,14 +5,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *
  * Captures: every .update(arg), every .eq(col, val), every .rpc(name, args).
  * Returns: configured data from .update().select(...) and a successful rpc result.
+ *
+ * `tableResponses` lets tests return different data per table (e.g. a
+ * semesters row vs the update target). The first matching key wins;
+ * fallback to `updateReturns` if no per-table entry matches.
  */
 export function makeAuditMockSupabase(opts: {
   updateReturns?: { data: Record<string, unknown>[] | null; error: null | { code: string; message: string } };
+  tableResponses?: Record<string, { data: Record<string, unknown>[] | null; error: null | { code: string; message: string } }>;
 } = {}) {
   const updateReturns = opts.updateReturns ?? {
     data: [{ id: "row-1" }, { id: "row-2" }],
     error: null,
   };
+  const tableResponses = opts.tableResponses ?? {};
   const calls = {
     update: [] as { arg: unknown }[],
     eq: [] as { col: string; val: unknown }[],
@@ -20,6 +26,7 @@ export function makeAuditMockSupabase(opts: {
   };
 
   const builder = (table: string): unknown => {
+    const returns = tableResponses[table] ?? updateReturns;
     const b: Record<string, unknown> = {
       select() { return b; },
       eq(col: string, val: unknown) { calls.eq.push({ col, val }); return b; },
@@ -30,21 +37,20 @@ export function makeAuditMockSupabase(opts: {
       insert(arg: unknown) { calls.update.push({ arg }); return b; },
       delete() { return b; },
       single() {
-        // Resolve with the first row of updateReturns.data, or null.
-        const data = updateReturns.data;
+        const data = returns.data;
         const first = Array.isArray(data) && data.length > 0 ? data[0] : null;
-        return Promise.resolve({ data: first, error: updateReturns.error });
+        return Promise.resolve({ data: first, error: returns.error });
       },
       maybeSingle() {
-        const data = updateReturns.data;
+        const data = returns.data;
         const first = Array.isArray(data) && data.length > 0 ? data[0] : null;
-        return Promise.resolve({ data: first, error: updateReturns.error });
+        return Promise.resolve({ data: first, error: returns.error });
       },
       then(
         onFulfilled: (v: unknown) => unknown,
         onRejected?: (e: unknown) => unknown,
       ) {
-        return Promise.resolve(updateReturns).then(onFulfilled, onRejected);
+        return Promise.resolve(returns).then(onFulfilled, onRejected);
       },
     };
     return b;
