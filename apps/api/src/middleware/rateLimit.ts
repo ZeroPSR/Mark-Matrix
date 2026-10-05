@@ -18,14 +18,12 @@ const handler429 = (c: { header: (k: string, v: string) => void; json: (body: un
   return c.json({ error: "rate_limited", detail: "Too many requests. Try again in 60s." }, 429);
 };
 
-/**
- * The rate limit is bypassed when `DISABLE_RATE_LIMIT=1` is in the env.
- * The check is per-request so test code can flip the env via
- * vi.stubEnv() (or direct process.env mutation in a beforeAll) to
- * re-enable the limiter for specific tests.
- */
 function isDisabled(): boolean {
   return process.env["DISABLE_RATE_LIMIT"] === "1";
+}
+
+function useKvBackend(): boolean {
+  return process.env["RATE_LIMIT_BACKEND"] !== "memory";
 }
 
 const noop: MiddlewareHandler<AppEnv> = async (_c, next) => {
@@ -61,13 +59,48 @@ function getRealBulk(): MiddlewareHandler<AppEnv> {
   return _realBulk;
 }
 
-export const generalRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (isDisabled()) return noop(c, next);
-  return getRealGeneral()(c, next);
-};
+/**
+ * Cycle 8c: KV-backed rate limit. The KV store provides a sliding window
+ * keyed by `rl:<scope>:<ip>`. Falls back to in-memory when RATE_LIMIT_BACKEND=memory
+ * or when c.env.RATE_LIMIT is unbound.
+ */
+async function kvRateLimitInner(
+  c: Parameters<MiddlewareHandler<AppEnv>>[0],
+  next: Parameters<MiddlewareHandler<AppEnv>>[1],
+  opts: { scope: string; limit: number },
+): Promise<Response | undefined> {
+  const kv = c.env?.RATE_LIMIT as
+    | { get: (k: string) => Promise<string | null>; put: (k: string, v: string, opts?: { expirationTtl?: number }) => Promise<unknown> }
+    | undefined;
+  if (!kv) {
+    return (opts.scope === "bulk" ? getRealBulk() : getRealGeneral())(c, next);
+  }
+  const ip = clientKey(c);
+  const key = `rl:${opts.scope}:${ip}`;
+  const raw = await kv.get(key);
+  const count = raw ? Number(raw) : 0;
+  if (count >= opts.limit) {
+    c.header("retry-after", "60");
+    return c.json({ error: "rate_limited", detail: "Too many requests. Try again in 60s." }, 429);
+  }
+  await kv.put(key, String(count + 1), { expirationTtl: 60 });
+  await next();
+  return undefined;
+}
 
-export const bulkRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (isDisabled()) return noop(c, next);
-  return getRealBulk()(c, next);
-};
+/**
+ * Per-request wrapper: re-reads DISABLE_RATE_LIMIT and RATE_LIMIT_BACKEND
+ * on every call so test env flips take effect. (Cycle 8b had the same
+ * pattern; the per-call check is what makes the cycle-8b test work in
+ * vitest where the module loads with DISABLE_RATE_LIMIT=1.)
+ */
+function makeWrapper(opts: { scope: string; limit: number }): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    if (isDisabled()) return noop(c, next);
+    if (useKvBackend()) return kvRateLimitInner(c, next, opts);
+    return (opts.scope === "bulk" ? getRealBulk() : getRealGeneral())(c, next);
+  };
+}
 
+export const generalRateLimit: MiddlewareHandler<AppEnv> = makeWrapper({ scope: "general", limit: 120 });
+export const bulkRateLimit: MiddlewareHandler<AppEnv> = makeWrapper({ scope: "bulk", limit: 10 });

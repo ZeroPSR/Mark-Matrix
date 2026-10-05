@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { generalRateLimit, bulkRateLimit } from "../middleware/rateLimit.js";
@@ -11,6 +11,7 @@ beforeAll(() => {
 });
 afterAll(() => {
   process.env["DISABLE_RATE_LIMIT"] = "1";
+  process.env["RATE_LIMIT_BACKEND"] = "";
 });
 
 function mountWithLimit(limit: MiddlewareHandler<AppEnv>): Hono<AppEnv> {
@@ -68,5 +69,68 @@ describe("rate limiting", () => {
     }
     const res = await app.request("/api/test", { headers: { "x-forwarded-for": "1.2.3.9, 10.0.0.1" } });
     expect(res.status).toBe(429);
+  }, 30000);
+});
+
+describe("KV rate limit fallback (cycle 8c)", () => {
+  it("uses in-memory backend when RATE_LIMIT_BACKEND=memory even if KV binding is present (Review Focus item 1)", async () => {
+    process.env["RATE_LIMIT_BACKEND"] = "memory";
+    const fakeKv = {
+      get: vi.fn(async () => null),
+      put: vi.fn(async () => undefined),
+      list: vi.fn(async () => ({ keys: [], list_complete: true, cursor: "" })),
+      getWithMetadata: vi.fn(async () => ({ value: null, metadata: null })),
+      delete: vi.fn(async () => undefined),
+    };
+    const app = new Hono<AppEnv>();
+    app.use("/api/*", (c, next) => {
+      c.env = { ...(c.env as object), RATE_LIMIT: fakeKv } as never;
+      return generalRateLimit(c, next);
+    });
+    app.get("/api/test", (c) => c.json({ ok: true }));
+
+    for (let i = 0; i < 120; i++) {
+      const res = await app.request("/api/test", { headers: { "cf-connecting-ip": "9.9.9.9" } });
+      expect(res.status).toBe(200);
+    }
+    const res = await app.request("/api/test", { headers: { "cf-connecting-ip": "9.9.9.9" } });
+    expect(res.status).toBe(429);
+    // The KV binding was never written to (in-memory path).
+    expect(fakeKv.put).not.toHaveBeenCalled();
+  }, 30000);
+
+  it("KV rate limit increments and returns 429 on overflow", async () => {
+    process.env["RATE_LIMIT_BACKEND"] = ""; // default = KV
+    const store = new Map<string, string>();
+    const fakeKv = {
+      get: vi.fn(async (k: string) => store.get(k) ?? null),
+      put: vi.fn(async (k: string, v: string) => {
+        store.set(k, v);
+      }),
+      list: vi.fn(async () => ({ keys: [], list_complete: true, cursor: "" })),
+      getWithMetadata: vi.fn(async () => ({ value: null, metadata: null })),
+      delete: vi.fn(async () => undefined),
+    };
+    const app = new Hono<AppEnv>();
+    app.use("/api/bulk", (c, next) => {
+      c.env = { ...(c.env as object), RATE_LIMIT: fakeKv } as never;
+      return bulkRateLimit(c, next);
+    });
+    app.post("/api/bulk", (c) => c.json({ ok: true }));
+
+    for (let i = 0; i < 10; i++) {
+      const res = await app.request("/api/bulk", {
+        method: "POST",
+        headers: { "cf-connecting-ip": "8.8.8.8" },
+      });
+      expect(res.status).toBe(200);
+    }
+    const res = await app.request("/api/bulk", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "8.8.8.8" },
+    });
+    expect(res.status).toBe(429);
+    // KV was written 10 times (one per request) with the running count.
+    expect(fakeKv.put).toHaveBeenCalledTimes(10);
   }, 30000);
 });
