@@ -7,9 +7,9 @@
   "pages_build_output_dir": "./dist",
   "observability": { "enabled": true },
   // Cycle 8c: VITE_API_ORIGIN is inlined into the build at compile time.
-  // Replace `api.mark-matrix.example.com` with the real API host before
-  // deploying. If using the default `*.workers.dev` URL, paste that here.
+  // Paste the real API host. For now using the workers.dev URL the API
+  // was deployed to; replace with the custom domain when it's set up.
   "vars": {
-    "VITE_API_ORIGIN": "https://api.mark-matrix.example.com"
+    "VITE_API_ORIGIN": "https://mark-matrix-api.team-tractor.workers.dev"
   }
 }
