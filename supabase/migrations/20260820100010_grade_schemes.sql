@@ -21,9 +21,14 @@ create table public.grade_schemes (
     (scope = 'course'  and course_id is not null and program_id is null) or
     (scope = 'program' and program_id is not null and course_id  is null)
   ),
-  check (min_marks <= max_marks),
-  unique (scheme_group, scope, coalesce(course_id, program_id), grade_label)
+  check (min_marks <= max_marks)
 );
+
+-- Functional unique index (table UNIQUE constraints don't accept expressions
+-- in this Postgres version). The expression matches the intent of the
+-- original UNIQUE constraint.
+create unique index grade_schemes_unique_idx
+  on public.grade_schemes (scheme_group, scope, coalesce(course_id, program_id), grade_label);
 
 create index grade_schemes_course_idx  on public.grade_schemes (course_id)  where course_id  is not null;
 create index grade_schemes_program_idx on public.grade_schemes (program_id) where program_id is not null;
