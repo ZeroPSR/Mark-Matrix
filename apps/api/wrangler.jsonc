@@ -11,7 +11,7 @@
   // Cycle 8c: KV namespace for the rate-limit middleware.
   // Run `wrangler kv:namespace create RATE_LIMIT` to get the id, then paste it here.
   "kv_namespaces": [
-    { "binding": "RATE_LIMIT", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+    { "binding": "RATE_LIMIT", "id": "2229c5c5c3264d5a809f6d3993301e48" }
   ],
   // Cycle 8c: custom domain. Replace `mark-matrix.example.com` with the real
   // domain (or omit this block to use the default `*.workers.dev` URL).
