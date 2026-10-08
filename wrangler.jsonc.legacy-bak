@@ -1,0 +1,9 @@
+{
+  "name": "mark-matrix",
+  "main": "src/index.js",
+  "account_id": "9015c546b15a28ea638c5c24ca2c2852",
+  "compatibility_date": "2026-07-30",
+  "vars": {
+    "CLOUDFLARE_API_TOKEN": "${CLOUDFLARE_API_TOKEN}"
+  }
+}

@@ -32,3 +32,6 @@ coverage/
 
 # Isolated workspaces
 .claude/worktrees/
+
+# Local keys (Supabase access tokens, Cloudflare API tokens, etc.)
+.keys/
