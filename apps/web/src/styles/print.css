@@ -1,0 +1,22 @@
+@media print {
+  :root, :root[data-theme="dark"] {
+    --color-paper:        #FFFFFF;
+    --color-ink:          #000000;
+    --color-ink-soft:     #333333;
+    --color-hairline:     #000000;
+    --color-surface:      #FFFFFF;
+    --color-surface-sunk: #F5F5F5;
+    --color-ink-blue:     #000000;
+  }
+
+  [data-print="hidden"] { display: none !important; }
+
+  .app-shell__header,
+  .app-shell__nav { display: none !important; }
+
+  .app-shell__main { padding: 0 !important; }
+
+  table { font-size: var(--type-body); }
+
+  body { background: #FFFFFF !important; color: #000000 !important; }
+}
