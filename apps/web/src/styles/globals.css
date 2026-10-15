@@ -1,0 +1,70 @@
+@import "./tokens.css";
+@import "./fonts.css";
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+body {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1 {
+  font: 600 var(--type-h1) "Source Serif 4", Georgia, serif;
+  margin: 0 0 var(--space-4);
+  color: var(--color-ink);
+}
+h2 {
+  font: 600 var(--type-h2) "Source Serif 4", Georgia, serif;
+  margin: 0 0 var(--space-3);
+}
+h3 {
+  font: 600 var(--type-h3) "IBM Plex Sans", system-ui, sans-serif;
+  margin: 0 0 var(--space-2);
+}
+p { margin: 0 0 var(--space-3); }
+
+a {
+  color: var(--color-ink-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a:hover { text-decoration-thickness: 2px; }
+
+button { font: inherit; cursor: pointer; }
+
+table { border-collapse: collapse; width: 100%; }
+input, select, button, textarea { font: inherit; color: inherit; }
+
+::selection {
+  background: color-mix(in srgb, var(--color-ink-blue) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink-blue);
+  outline-offset: 2px;
+}
+
+:root[data-theme="dark"] ::selection {
+  background: color-mix(in srgb, var(--color-ink-blue) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --color-hairline: CanvasText;
+    --color-ink:      CanvasText;
+    --color-ink-blue: Highlight;
+  }
+  :root[data-theme="dark"] {
+    --color-hairline: CanvasText;
+    --color-ink:      CanvasText;
+    --color-ink-blue: Highlight;
+  }
+}
