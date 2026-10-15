@@ -1,0 +1,28 @@
+/* apps/web/src/components/Table/Table.module.css */
+.table { width: 100%; border-collapse: collapse; }
+.thead { background: var(--color-surface-sunk); }
+.th {
+  text-align: left;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.td {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+}
+.tr:hover .td { background: var(--color-surface-sunk); }
+.right { text-align: right; }
+.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--color-ink-soft);
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+}
+.sticky thead .th { position: sticky; top: 0; z-index: 1; }
