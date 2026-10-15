@@ -1,0 +1,4 @@
+.svg { color: var(--color-ink-blue); display: block; max-width: 100%; }
+.axis { stroke: var(--color-hairline); stroke-width: 1; }
+.label { font: 400 11px "IBM Plex Mono", ui-monospace, monospace; fill: var(--color-ink-soft); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
