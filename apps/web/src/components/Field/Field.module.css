@@ -1,0 +1,11 @@
+.field { display: grid; gap: var(--space-1); margin-bottom: var(--space-4); }
+.label {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+.error {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-error);
+}
