@@ -53,4 +53,33 @@ export default tseslint.config(
     files: ["scripts/**/*.ts"],
     rules: { "no-console": "off" },
   },
+  {
+    // Design-system guard: raw hex color literals are only allowed in tokens.css.
+    plugins: {
+      "mark-matrix": {
+        rules: {
+          "no-raw-hex": {
+            meta: {
+              type: "problem",
+              docs: { description: "Disallow raw hex color literals outside tokens.css" },
+              schema: [],
+              messages: { rawHex: "Raw hex literals are only allowed in apps/web/src/styles/tokens.css" },
+            },
+            create(context) {
+              const filename = context.filename.replace(/\\/g, "/");
+              return {
+                Literal(node) {
+                  if (typeof node.value !== "string") return;
+                  if (!/^#[0-9a-fA-F]{3,8}$/.test(node.value)) return;
+                  if (filename.endsWith("apps/web/src/styles/tokens.css") || filename.endsWith("tokens.ts")) return;
+                  context.report({ node, messageId: "rawHex" });
+                },
+              };
+            },
+          },
+        },
+      },
+    },
+    rules: { "mark-matrix/no-raw-hex": "error" },
+  },
 );
