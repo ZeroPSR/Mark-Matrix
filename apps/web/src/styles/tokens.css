@@ -1,0 +1,64 @@
+:root {
+  /* Color — light / paper */
+  --color-paper:        #F7F4ED;
+  --color-ink:          #1A1817;
+  --color-ink-soft:     #4A4640;
+  --color-hairline:     #E5E0D5;
+  --color-surface:      #FFFFFF;
+  --color-surface-sunk: #F2EEE5;
+  --color-ink-blue:     #1B3F7E;
+  --color-success:      #2F6F4E;
+  --color-warning:      #B07A1A;
+  --color-error:        #8E2A2A;
+  --color-backdrop:     color-mix(in srgb, var(--color-ink) 40%, transparent);
+
+  /* Type scale */
+  --type-display: 32px/40px;
+  --type-h1:      24px/32px;
+  --type-h2:      20px/28px;
+  --type-h3:      16px/24px;
+  --type-body:    15px/24px;
+  --type-small:   13px/20px;
+  --type-mono:    14px/20px;
+
+  /* Spacing (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radius */
+  --radius-pill: 2px;
+  --radius-button: 4px;
+
+  /* Motion */
+  --motion-fast: 100ms ease-out;
+
+  /* Breakpoints (documented; not used in CSS) */
+  --bp-sm: 640px;
+  --bp-md: 1024px;
+  --bp-lg: 1024px;
+}
+
+:root[data-theme="dark"] {
+  --color-paper:        #18161A;
+  --color-ink:          #E8E2D6;
+  --color-ink-soft:     #B0A89C;
+  --color-hairline:     #2F2C36;
+  --color-surface:      #232128;
+  --color-surface-sunk: #14131A;
+  --color-ink-blue:     #6E9BD1;
+  --color-success:      #6FB38A;
+  --color-warning:      #D4A45A;
+  --color-error:        #E08585;
+  --color-backdrop:     color-mix(in srgb, #000 70%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; }
+}
