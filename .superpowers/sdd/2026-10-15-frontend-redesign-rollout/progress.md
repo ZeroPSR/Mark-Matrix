@@ -77,3 +77,5 @@ Task 27: complete (commit f124e27, tests: pnpm --filter @mark-matrix/web exec vi
 
 Task 28: complete (commit f61ef53, tests: pnpm --filter @mark-matrix/web exec vitest run src/tests/MyGradesheetPage.test.tsx → 2/2 pass)
   Task 28: Ruling: existing tests already use loose regex matchers (`/SGPA/`, `/Gradesheet not available yet/`) so the assertion rewrites called for in the plan's Step 4 were unnecessary — both new design-system strings still match. No test file edits needed.
+
+Task 34: complete (commits d06b85a + 483b897, tests: pnpm --filter @mark-matrix/web test → 39 files / 102 tests pass — no page-specific test file exists for FacultyCoursesPage, full suite stays green)
