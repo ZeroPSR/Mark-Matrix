@@ -1,0 +1,18 @@
+/* apps/web/src/components/Badge/Badge.module.css */
+.badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: transparent;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+.draft     { border-color: var(--color-warning); color: var(--color-warning); }
+.submitted { border-color: var(--color-ink-blue); color: var(--color-ink-blue); }
+.published { border-color: var(--color-success); color: var(--color-success); }
+.locked    { border-color: var(--color-ink); color: var(--color-ink); background: var(--color-surface-sunk); }
+.error     { border-color: var(--color-error); color: var(--color-error); }
