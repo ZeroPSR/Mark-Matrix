@@ -1,0 +1,41 @@
+/* apps/web/src/components/Modal/Modal.module.css */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--color-backdrop);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+.dialog {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  width: 100%;
+  max-width: 640px;
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-ink) 4%, transparent),
+    0 24px 48px -24px color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.title {
+  font: 600 var(--type-h2) "Source Serif 4", Georgia, serif;
+  margin: 0;
+}
+.close {
+  background: transparent;
+  border: none;
+  font: 400 var(--type-h3) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+.body { font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif; color: var(--color-ink); }
+.footer { display: flex; justify-content: flex-end; gap: var(--space-3); }
