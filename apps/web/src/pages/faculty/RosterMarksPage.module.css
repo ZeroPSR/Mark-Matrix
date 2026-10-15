@@ -1,0 +1,58 @@
+/* apps/web/src/pages/faculty/RosterMarksPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead { background: var(--color-surface-sunk); }
+
+.table th {
+  text-align: left;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.table td {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+  vertical-align: top;
+}
+
+.table tr:hover td { background: var(--color-surface-sunk); }
+
+.score {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+  margin-right: var(--space-2);
+}
+
+.status {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+
+.status--draft     { color: var(--color-warning); }
+.status--submitted { color: var(--color-ink-blue); }
+.status--approved  { color: var(--color-success); }
+.status--locked    { color: var(--color-ink); }
+
+.right { text-align: right; }
+
+.mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}

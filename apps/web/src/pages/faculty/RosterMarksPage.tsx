@@ -2,6 +2,13 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useResource } from "../../lib/useResource.js";
 import { ROUTES_CYCLE_2, type MarksRow } from "@mark-matrix/shared";
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+import { Banner } from "../../components/Banner/Banner.js";
+import { Loading } from "../../components/Loading/Loading.js";
+import { Empty } from "../../components/Empty/Empty.js";
+import { ErrorState } from "../../components/ErrorState/ErrorState.js";
+import { cn } from "../../lib/cn.js";
+import styles from "./RosterMarksPage.module.css";
 
 interface Course {
   id: string;
@@ -67,48 +74,77 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
     return [...s].sort();
   }, [rows.data]);
 
-  if (!course && courses.data !== null) return <p>Course not found.</p>;
+  const allSubmitted = useMemo(() => {
+    const list = rows.data?.data ?? [];
+    return list.length > 0 && list.every((r) => r.status === "submitted" || r.status === "approved" || r.status === "locked");
+  }, [rows.data]);
+
+  const isLocked = allSubmitted;
+  const showLoading = rows.loading && !rows.data;
+  const showError = rows.error !== null && !rows.data;
+  const courseMissing = !course && courses.data !== null;
+  const noEnrollments = rows.data !== null && (enrollments.data?.data ?? []).length === 0;
 
   return (
-    <main className="roster-marks">
-      <h1>Marks roster — {course?.code ?? "…"}</h1>
-      {rows.loading && <p>Loading…</p>}
-      {rows.error !== null && <p className="roster-marks__error">Error: {rows.error}</p>}
-      <table className="roster-marks__table">
-        <thead>
-          <tr>
-            <th>Roll</th>
-            <th>Name</th>
-            {examTypes.map((e) => <th key={e}>{e}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {(enrollments.data?.data ?? []).map((e) => {
-            const s = studentById.get(e.studentId);
-            const byExam = grid.get(e.studentId);
-            return (
-              <tr key={e.studentId}>
-                <td>{s?.rollNumber ?? "—"}</td>
-                <td>{s?.name ?? e.studentId}</td>
-                {examTypes.map((et) => {
-                  const r = byExam?.get(et);
-                  if (!r) return <td key={et}>—</td>;
+    <main className={styles.page}>
+      <PageTitle
+        eyebrow={role === "faculty" ? "Faculty · Marks roster" : "Admin · Marks roster"}
+        subtitle={course ? `${course.code} — ${course.title}` : undefined}
+      >
+        Marks roster — {course?.code ?? "…"}
+      </PageTitle>
+
+      {courseMissing && <Empty>Course not found.</Empty>}
+      {showLoading && <Loading />}
+      {showError && (
+        <ErrorState onRetry={() => window.location.reload()}>{rows.error}</ErrorState>
+      )}
+
+      {course !== null && !courseMissing && (
+        <>
+          {isLocked && (
+            <Banner variant="info" title={role === "faculty" ? "Marks locked" : "Marks locked"}>
+              Marks have been submitted for this course and cannot be edited until an unlock is recorded.
+            </Banner>
+          )}
+          {noEnrollments && <Empty>No students are enrolled in this course yet.</Empty>}
+          {!noEnrollments && (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Roll</th>
+                  <th>Name</th>
+                  {examTypes.map((e) => <th key={e} className={styles.right}>{e}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {(enrollments.data?.data ?? []).map((e) => {
+                  const s = studentById.get(e.studentId);
+                  const byExam = grid.get(e.studentId);
                   return (
-                    <td key={et}>
-                      <span className="roster-marks__score">
-                        {r.marksObtained} / {r.maxMarks}
-                      </span>
-                      <small className={"roster-marks__status--" + r.status}>
-                        {r.status}
-                      </small>
-                    </td>
+                    <tr key={e.studentId}>
+                      <td className={styles.mono}>{s?.rollNumber ?? "—"}</td>
+                      <td>{s?.name ?? e.studentId}</td>
+                      {examTypes.map((et) => {
+                        const r = byExam?.get(et);
+                        if (!r) return <td key={et} className={styles.right}>—</td>;
+                        return (
+                          <td key={et} className={styles.right}>
+                            <span className={styles.score}>{r.marksObtained} / {r.maxMarks}</span>
+                            <small className={cn(styles.status, styles[`status--${r.status}`])}>
+                              {r.status}
+                            </small>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
     </main>
   );
 }
