@@ -1,0 +1,22 @@
+/* apps/web/src/components/Select/Select.module.css */
+.select {
+  appearance: none;
+  border: none;
+  border-bottom: 1px solid var(--color-hairline);
+  background: transparent;
+  padding: var(--space-2) var(--space-5) var(--space-2) 0;
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  width: 100%;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-ink-soft) 50%),
+                    linear-gradient(135deg, var(--color-ink-soft) 50%, transparent 50%);
+  background-position: right 8px top 50%, right 4px top 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.select:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-ink-blue);
+  margin-bottom: -1px;
+}
