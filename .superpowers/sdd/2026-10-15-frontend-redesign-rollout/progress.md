@@ -71,3 +71,9 @@ Task 25: complete (commit bec1b38, tests: pnpm --filter @mark-matrix/web test --
 Task 26: complete (commit 7b83576, tests: pnpm --filter @mark-matrix/web test -- DotPlot.test.tsx → 1/1 pass)
 
 Task 22 (post-Tooltip follow-up): complete (commit 30fcc17, tests: re-ran pnpm --filter @mark-matrix/web test -- Header.test.tsx → 3/3 pass)
+
+Task 27: complete (commit f124e27, tests: pnpm --filter @mark-matrix/web exec vitest run src/tests/AppShell.test.tsx → 5/5 pass)
+  Task 27: Ruling: plan's reference `const { role, user, signOut } = useAuth()` references a `user` field that AuthContext does not expose — AuthContext only returns `userId`. Substituted `userName={userId}` to keep `useAuth` integration intact and match the existing mock shape (`{ userId: "u1", role: "admin", ... }`); null check switched to `userId === null` for the same reason. No assertions required updating.
+
+Task 28: complete (commit f61ef53, tests: pnpm --filter @mark-matrix/web exec vitest run src/tests/MyGradesheetPage.test.tsx → 2/2 pass)
+  Task 28: Ruling: existing tests already use loose regex matchers (`/SGPA/`, `/Gradesheet not available yet/`) so the assertion rewrites called for in the plan's Step 4 were unnecessary — both new design-system strings still match. No test file edits needed.

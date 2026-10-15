@@ -1,0 +1,42 @@
+/* apps/web/src/pages/admin/UsersPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+.filterBar {
+  display: grid;
+  grid-template-columns: 1fr 200px auto;
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.roleSet {
+  display: flex;
+  gap: var(--space-1);
+}
+.roleBtn {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px var(--space-2);
+  border: 1px solid var(--color-hairline);
+  background: transparent;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+.roleBtn:disabled { cursor: not-allowed; opacity: 0.5; }
+.roleBtn:hover:not(:disabled) { background: var(--color-surface-sunk); color: var(--color-ink); }
+.roleBtnActive {
+  border-color: var(--color-ink-blue);
+  color: var(--color-ink-blue);
+}
+@media (max-width: 720px) {
+  .filterBar { grid-template-columns: 1fr; }
+}

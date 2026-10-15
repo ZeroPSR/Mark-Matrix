@@ -1,0 +1,25 @@
+/* apps/web/src/pages/faculty/FacultyCoursesPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.actions {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+}
+
+.actions a {
+  margin-right: var(--space-3);
+}
+
+.codeMono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-soft);
+}
+
+.titleCell {
+  font-weight: 600;
+  color: var(--color-ink);
+}
