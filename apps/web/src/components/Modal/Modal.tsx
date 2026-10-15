@@ -1,5 +1,5 @@
 // apps/web/src/components/Modal/Modal.tsx
-import { useEffect, useRef, type ReactNode, type MouseEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useRef, type ReactNode, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import styles from "./Modal.module.css";
 
