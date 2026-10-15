@@ -1,8 +1,16 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useResource } from "../../lib/useResource.js";
 import { apiFetch } from "../../lib/api.js";
 import { ROUTES_CYCLE_2, type MarksRow } from "@mark-matrix/shared";
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+import { Banner } from "../../components/Banner/Banner.js";
+import { Button } from "../../components/Button/Button.js";
+import { File } from "../../components/File/File.js";
+import { Empty } from "../../components/Empty/Empty.js";
+import { Loading } from "../../components/Loading/Loading.js";
+import { ErrorState } from "../../components/ErrorState/ErrorState.js";
+import styles from "./MarksEntryPage.module.css";
 
 interface Course {
   id: string;
@@ -129,8 +137,7 @@ export function FacultyMarksEntryPage(): JSX.Element {
     }
   };
 
-  const onCsvChosen = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const file = e.target.files?.[0];
+  const onCsvChosen = async (file: File | null): Promise<void> => {
     if (!file || !marksPath) return;
     const csv = await file.text();
     setMessage(null);
@@ -151,94 +158,135 @@ export function FacultyMarksEntryPage(): JSX.Element {
     }
   };
 
-  if (!course && courses.data !== null) return <p>Course not found.</p>;
+  const showLoading = courses.loading && !course;
+  const showError = courses.error !== null && !course;
+  const courseMissing = !course && courses.data !== null;
 
   return (
-    <main className="marks-entry">
-      <h1>Enter Marks</h1>
+    <main className={styles.page}>
+      <PageTitle eyebrow="Faculty · Marks" subtitle={course ? `${course.code} — ${course.title}` : undefined}>
+        Enter Marks
+      </PageTitle>
+
       {course !== null && (
-        <p>
+        <p className={styles.meta}>
           <strong>{course.code}</strong> — {course.title} (Semester {course.semester.number})
         </p>
       )}
-      {isSubmitted && (
-        <div className="marks-entry__banner">
-          This course's marks are submitted. Faculty edits are locked.
-        </div>
+
+      {showLoading && <Loading />}
+      {showError && (
+        <ErrorState onRetry={() => window.location.reload()}>{courses.error}</ErrorState>
       )}
-      <div className="marks-entry__actions">
-        <button onClick={() => void saveDraft()} disabled={isSubmitted || submitting}>
-          Save draft
-        </button>
-        <button onClick={() => void submitCourse()} disabled={isSubmitted || submitting}>
-          Submit
-        </button>
-        <label className="marks-entry__csv">
-          CSV upload:&nbsp;
-          <input type="file" accept=".csv,text/csv" onChange={(e) => void onCsvChosen(e)} />
-        </label>
-      </div>
-      {message !== null && <p className="marks-entry__msg">{message}</p>}
-      {bulkErrors.length > 0 && (
-        <details className="marks-entry__bulk-errors" open>
-          <summary>CSV errors ({bulkErrors.length})</summary>
-          <table>
+      {courseMissing && <Empty>This course could not be found.</Empty>}
+
+      {course !== null && !courseMissing && (
+        <>
+          {isSubmitted && (
+            <Banner variant="info" title="Marks locked">
+              This course's marks are submitted. Faculty edits are locked.
+            </Banner>
+          )}
+
+          <div className={styles.actions}>
+            <Button
+              variant="primary"
+              onClick={() => void saveDraft()}
+              disabled={isSubmitted || submitting}
+            >
+              {submitting ? "Saving…" : "Save draft"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void submitCourse()}
+              disabled={isSubmitted || submitting}
+            >
+              Submit
+            </Button>
+            <div className={styles.csv}>
+              <File label="CSV upload" accept=".csv,text/csv" onChange={onCsvChosen} />
+            </div>
+          </div>
+
+          {message !== null && (
+            <p className={bulkErrors.length > 0 ? styles.errorMessage : styles.message}>
+              {message}
+            </p>
+          )}
+
+          {bulkErrors.length > 0 && (
+            <details className={styles.bulkErrors} open>
+              <summary>CSV errors ({bulkErrors.length})</summary>
+              <table>
+                <thead>
+                  <tr><th>Row</th><th>Roll #</th><th>Reason</th></tr>
+                </thead>
+                <tbody>
+                  {bulkErrors.map((er, i) => (
+                    <tr key={i}>
+                      <td>{er.row}</td>
+                      <td>{er.rollNumber ?? "—"}</td>
+                      <td>{er.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
+
+          <table className={styles.table}>
             <thead>
-              <tr><th>Row</th><th>Roll #</th><th>Reason</th></tr>
+              <tr>
+                <th>Roll</th>
+                <th>Name</th>
+                {examTypes.map((et) => (
+                  <th key={et.examType}>{et.examType} (max {et.maxMarks})</th>
+                ))}
+              </tr>
             </thead>
             <tbody>
-              {bulkErrors.map((er, i) => (
-                <tr key={i}>
-                  <td>{er.row}</td>
-                  <td>{er.rollNumber ?? "—"}</td>
-                  <td>{er.reason}</td>
+              {roster.length === 0 ? (
+                <tr>
+                  <td colSpan={2 + examTypes.length}>No students enrolled yet.</td>
                 </tr>
-              ))}
+              ) : (
+                roster.map((r) => (
+                  <tr key={r.studentId}>
+                    <td>{r.rollNumber ?? "—"}</td>
+                    <td>{r.label}</td>
+                    {examTypes.map((et) => {
+                      const existing = (existingMarks.data?.data ?? []).find(
+                        (m) => m.studentId === r.studentId && m.examType === et.examType,
+                      );
+                      const value =
+                        draft[r.studentId]?.[et.examType] ?? (existing ? String(existing.marksObtained) : "");
+                      const submitted = existing?.status === "submitted";
+                      return (
+                        <td key={et.examType}>
+                          <div className={styles.cell}>
+                            <input
+                              type="number"
+                              min={0}
+                              max={et.maxMarks}
+                              step={0.5}
+                              disabled={isSubmitted || submitted}
+                              value={value}
+                              onChange={(e) => updateCell(r.studentId, et.examType, e.target.value)}
+                              className={styles.cellInput}
+                              aria-label={`Marks for ${r.label} ${et.examType}`}
+                            />
+                            {submitted && <small className={styles.submitted}>submitted</small>}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </details>
+        </>
       )}
-      <table className="marks-entry__table">
-        <thead>
-          <tr>
-            <th>Roll</th>
-            <th>Name</th>
-            {examTypes.map((et) => (
-              <th key={et.examType}>{et.examType} (max {et.maxMarks})</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {roster.map((r) => (
-            <tr key={r.studentId}>
-              <td>{r.rollNumber ?? "—"}</td>
-              <td>{r.label}</td>
-              {examTypes.map((et) => {
-                const existing = (existingMarks.data?.data ?? []).find(
-                  (m) => m.studentId === r.studentId && m.examType === et.examType,
-                );
-                const value =
-                  draft[r.studentId]?.[et.examType] ?? (existing ? String(existing.marksObtained) : "");
-                const submitted = existing?.status === "submitted";
-                return (
-                  <td key={et.examType}>
-                    <input
-                      type="number"
-                      min={0}
-                      max={et.maxMarks}
-                      step={0.5}
-                      disabled={isSubmitted || submitted}
-                      value={value}
-                      onChange={(e) => updateCell(r.studentId, et.examType, e.target.value)}
-                    />
-                    {submitted && <small className="marks-entry__locked">submitted</small>}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </main>
   );
 }

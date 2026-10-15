@@ -1,0 +1,131 @@
+/* apps/web/src/pages/faculty/MarksEntryPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.meta {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+.meta strong {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.actions .csv {
+  min-width: 240px;
+}
+
+.message {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+.errorMessage {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-error);
+  margin: 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead { background: var(--color-surface-sunk); }
+
+.table th {
+  text-align: left;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.table td {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+  vertical-align: top;
+}
+
+.table tr:hover td { background: var(--color-surface-sunk); }
+
+.table .cell {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.cellInput {
+  width: 5rem;
+  border: none;
+  border-bottom: 1px solid var(--color-hairline);
+  background: transparent;
+  padding: var(--space-1) 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.cellInput:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-ink-blue);
+  margin-bottom: -1px;
+}
+
+.cellInput:disabled {
+  color: var(--color-ink-soft);
+  cursor: not-allowed;
+}
+
+.submitted {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+}
+
+.bulkErrors {
+  margin-top: var(--space-3);
+}
+
+.bulkErrors summary {
+  cursor: pointer;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-warning);
+}
+
+.bulkErrors table {
+  margin-top: var(--space-2);
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bulkErrors th,
+.bulkErrors td {
+  text-align: left;
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.bulkErrors th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
