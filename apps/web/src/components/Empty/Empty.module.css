@@ -1,0 +1,8 @@
+/* apps/web/src/components/Empty/Empty.module.css */
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+}

@@ -1,0 +1,8 @@
+/* apps/web/src/components/Loading/Loading.module.css */
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  font: 400 var(--type-mono) "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink-soft);
+}

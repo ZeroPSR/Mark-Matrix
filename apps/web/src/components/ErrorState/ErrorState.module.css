@@ -1,0 +1,13 @@
+/* apps/web/src/components/ErrorState/ErrorState.module.css */
+.wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-left: 4px solid var(--color-error);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  gap: var(--space-4);
+}
