@@ -1,0 +1,10 @@
+/* apps/web/src/components/File/File.module.css */
+.wrap { display: grid; gap: var(--space-1); }
+.label {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+.input { font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif; }
+.filename { font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif; color: var(--color-ink); }
