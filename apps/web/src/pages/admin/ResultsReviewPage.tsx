@@ -85,28 +85,28 @@ export function ResultsReviewPage(): JSX.Element {
           ))}
         </tbody>
       </table>
-      {unlockTarget !== null && unlockTarget.kind === "marks" && (
-        <UnlockModal
-          title={`Unlock marks for ${unlockTarget.course.code}`}
-          onCancel={() => setUnlockTarget(null)}
-          onConfirm={async (reason) => {
-            setBusyCourse(unlockTarget.course.id);
-            try {
-              await apiFetch(url(unlockTarget.course, "unlock"), {
-                method: "POST",
-                body: JSON.stringify({ reason }),
-              });
-              setMessage(`Unlocked ${unlockTarget.course.code}`);
-              setUnlockTarget(null);
-              window.location.reload();
-            } catch (e) {
-              setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
-            } finally {
-              setBusyCourse(null);
-            }
-          }}
-        />
-      )}
+      <UnlockModal
+        open={unlockTarget !== null && unlockTarget.kind === "marks"}
+        onClose={() => setUnlockTarget(null)}
+        title={unlockTarget !== null ? `Unlock marks for ${unlockTarget.course.code}` : "Unlock marks"}
+        onConfirm={async (reason) => {
+          if (unlockTarget === null) return;
+          setBusyCourse(unlockTarget.course.id);
+          try {
+            await apiFetch(url(unlockTarget.course, "unlock"), {
+              method: "POST",
+              body: JSON.stringify({ reason }),
+            });
+            setMessage(`Unlocked ${unlockTarget.course.code}`);
+            setUnlockTarget(null);
+            window.location.reload();
+          } catch (e) {
+            setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
+          } finally {
+            setBusyCourse(null);
+          }
+        }}
+      />
     </main>
   );
 }

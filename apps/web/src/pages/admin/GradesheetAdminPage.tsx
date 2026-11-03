@@ -91,24 +91,23 @@ export function GradesheetAdminPage(): JSX.Element {
           </tbody>
         </table>
       )}
-      {showUnlock && (
-        <UnlockModal
-          title="Unlock gradesheet"
-          onCancel={() => setShowUnlock(false)}
-          onConfirm={async (reason) => {
-            setBusy(true);
-            try {
-              await apiFetch(url("unlock"), { method: "POST", body: JSON.stringify({ reason }) });
-              setMessage("Unlocked. You can re-compile and re-publish.");
-              setShowUnlock(false);
-            } catch (e) {
-              setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
-            } finally {
-              setBusy(false);
-            }
-          }}
-        />
-      )}
+      <UnlockModal
+        open={showUnlock}
+        onClose={() => setShowUnlock(false)}
+        title="Unlock gradesheet"
+        onConfirm={async (reason) => {
+          setBusy(true);
+          try {
+            await apiFetch(url("unlock"), { method: "POST", body: JSON.stringify({ reason }) });
+            setMessage("Unlocked. You can re-compile and re-publish.");
+            setShowUnlock(false);
+          } catch (e) {
+            setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     </main>
   );
 }
