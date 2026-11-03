@@ -9,10 +9,10 @@ export interface PageTitleProps {
 
 export function PageTitle({ eyebrow, subtitle, children }: PageTitleProps): JSX.Element {
   return (
-    <header className={styles.wrap}>
-      {eyebrow !== undefined && <p className={styles.eyebrow}>{eyebrow}</p>}
-      <h1 className={styles.title}>{children}</h1>
-      {subtitle !== undefined && <p className={styles.subtitle}>{subtitle}</p>}
+    <header className={styles["wrap"]}>
+      {eyebrow !== undefined && <p className={styles["eyebrow"]}>{eyebrow}</p>}
+      <h1 className={styles["title"]}>{children}</h1>
+      {subtitle !== undefined && <p className={styles["subtitle"]}>{subtitle}</p>}
     </header>
   );
 }

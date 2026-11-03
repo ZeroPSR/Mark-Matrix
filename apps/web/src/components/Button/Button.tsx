@@ -22,7 +22,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={cn(styles.btn, styles[variant], styles[size], className)}
+      className={cn(styles["btn"], styles[variant], styles[size], className)}
       {...rest}
     >
       {children}

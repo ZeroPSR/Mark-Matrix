@@ -5,7 +5,7 @@ import styles from "./Tooltip.module.css";
 
 export interface TooltipProps {
   content: ReactNode;
-  children: ReactElement<{ onFocus?: (e: ReactFocusEvent<HTMLElement>) => void; onBlur?: (e: ReactFocusEvent<HTMLElement>) => void; onMouseEnter?: (e: ReactMouseEvent<HTMLElement>) => void; onMouseLeave?: (e: ReactMouseEvent<HTMLElement>) => void }>;
+  children: ReactElement<{ onFocus?: (e: ReactFocusEvent<HTMLElement>) => void; onBlur?: (e: ReactFocusEvent<HTMLElement>) => void; onMouseEnter?: (e: ReactMouseEvent<HTMLElement>) => void; onMouseLeave?: (e: ReactMouseEvent<HTMLElement>) => void; "aria-describedby"?: string | undefined }>;
 }
 
 export function Tooltip({ content, children }: TooltipProps): JSX.Element {
@@ -40,7 +40,7 @@ export function Tooltip({ content, children }: TooltipProps): JSX.Element {
         <span
           role="tooltip"
           id={id}
-          className={styles.tip}
+          className={styles["tip"]}
           style={{ left: pos.x, top: pos.y, transform: "translateX(-50%)" }}
         >
           {content}

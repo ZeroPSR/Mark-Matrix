@@ -16,14 +16,14 @@ export function BarChart({ data, ariaLabel, max }: BarChartProps): JSX.Element {
   return (
     <>
       <svg
-        className={styles.svg}
+        className={styles["svg"]}
         viewBox={`0 0 ${w} ${h}`}
         width={w}
         height={h}
         role="img"
         aria-label={ariaLabel}
       >
-        <line className={styles.axis} x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} />
+        <line className={styles["axis"]} x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} />
         {data.map((d, i) => {
           const bh = ((h - pad * 2) * d.value) / ceiling;
           const x = pad + i * ((w - pad * 2) / Math.max(data.length, 1)) + 4;
@@ -31,12 +31,12 @@ export function BarChart({ data, ariaLabel, max }: BarChartProps): JSX.Element {
           return (
             <g key={d.label}>
               <rect x={x} y={y} width={barW} height={bh} fill="currentColor" />
-              <text className={styles.label} x={x + barW / 2} y={h - pad + 12} textAnchor="middle">{d.label}</text>
+              <text className={styles["label"]} x={x + barW / 2} y={h - pad + 12} textAnchor="middle">{d.label}</text>
             </g>
           );
         })}
       </svg>
-      <table className={styles.sr}>
+      <table className={styles["sr"]}>
         <thead><tr><th>Label</th><th>Value</th></tr></thead>
         <tbody>{data.map((d) => <tr key={d.label}><td>{d.label}</td><td>{d.value}</td></tr>)}</tbody>
       </table>

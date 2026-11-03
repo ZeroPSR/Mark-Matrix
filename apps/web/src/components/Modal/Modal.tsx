@@ -51,10 +51,10 @@ export function Modal({ open, onClose, title, actions, children }: ModalProps): 
         const active = document.activeElement as HTMLElement | null;
         if (e.shiftKey && active === first) {
           e.preventDefault();
-          last.focus();
+          last?.focus();
         } else if (!e.shiftKey && active === last) {
           e.preventDefault();
-          first.focus();
+          first?.focus();
         }
       }
     };
@@ -69,21 +69,21 @@ export function Modal({ open, onClose, title, actions, children }: ModalProps): 
   };
 
   return createPortal(
-    <div className={styles.backdrop} onMouseDown={onBackdropMouseDown} data-testid="modal-backdrop">
+    <div className={styles["backdrop"]} onMouseDown={onBackdropMouseDown} data-testid="modal-backdrop">
       <div
-        className={styles.dialog}
+        className={styles["dialog"]}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         ref={dialogRef}
         tabIndex={-1}
       >
-        <div className={styles.header}>
-          {title !== undefined ? <h2 className={styles.title}>{title}</h2> : <span />}
-          <button className={styles.close} aria-label="Close" tabIndex={-1} onClick={onClose}>×</button>
+        <div className={styles["header"]}>
+          {title !== undefined ? <h2 className={styles["title"]}>{title}</h2> : <span />}
+          <button className={styles["close"]} aria-label="Close" tabIndex={-1} onClick={onClose}>×</button>
         </div>
-        <div className={styles.body}>{children}</div>
-        {actions !== undefined && <div className={styles.footer}>{actions}</div>}
+        <div className={styles["body"]}>{children}</div>
+        {actions !== undefined && <div className={styles["footer"]}>{actions}</div>}
       </div>
     </div>,
     document.body,

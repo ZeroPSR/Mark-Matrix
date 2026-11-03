@@ -12,6 +12,9 @@ export default tseslint.config(
       "**/.wrangler/**",
       "**/coverage/**",
       "**/.vite/**",
+      // Planning-run scratch space (SDD ledgers, briefs, review packages).
+      // Git-ignored and not project source.
+      "**/.superpowers/**",
     ],
   },
   js.configs.recommended,

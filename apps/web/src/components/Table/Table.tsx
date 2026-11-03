@@ -25,24 +25,24 @@ export function Table<Row extends Record<string, unknown>>({
 }: TableProps<Row>): JSX.Element {
   if (rows.length === 0) {
     return (
-      <table className={styles.table}>
-        <thead className={styles.thead}>
+      <table className={styles["table"]}>
+        <thead className={styles["thead"]}>
           <tr>
-            <th className={styles.th} colSpan={columns.length}>·</th>
+            <th className={styles["th"]} colSpan={columns.length}>·</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td className={styles.empty}>{emptyMessage}</td></tr>
+          <tr><td className={styles["empty"]}>{emptyMessage}</td></tr>
         </tbody>
       </table>
     );
   }
   return (
-    <table className={cn(styles.table, stickyHeader ? styles.sticky : undefined)}>
-      <thead className={styles.thead}>
+    <table className={cn(styles["table"], stickyHeader ? styles["sticky"] : undefined)}>
+      <thead className={styles["thead"]}>
         <tr>
           {columns.map((c) => (
-            <th key={c.key} className={cn(styles.th, c.align === "right" ? styles.right : undefined)}>
+            <th key={c.key} className={cn(styles["th"], c.align === "right" ? styles["right"] : undefined)}>
               {c.header}
             </th>
           ))}
@@ -50,14 +50,14 @@ export function Table<Row extends Record<string, unknown>>({
       </thead>
       <tbody>
         {rows.map((row, i) => (
-          <tr key={i} className={styles.tr}>
+          <tr key={i} className={styles["tr"]}>
             {columns.map((c) => {
               const v = row[c.key];
               const content: ReactNode = v === null || v === undefined || v === "" ? "—" : (v as ReactNode);
               return (
                 <td
                   key={c.key}
-                  className={cn(styles.td, c.align === "right" ? styles.right : undefined, c.mono ? styles.mono : undefined)}
+                  className={cn(styles["td"], c.align === "right" ? styles["right"] : undefined, c.mono ? styles["mono"] : undefined)}
                 >
                   {content}
                 </td>
@@ -103,7 +103,7 @@ export interface TableCellProps {
 
 export function TableHead({ children }: TableHeadProps): JSX.Element {
   return (
-    <thead className={styles.thead}>
+    <thead className={styles["thead"]}>
       <tr>{children}</tr>
     </thead>
   );
@@ -114,7 +114,7 @@ export function TableBody({ children }: TableBodyProps): JSX.Element {
 }
 
 export function TableRow({ children }: TableRowProps): JSX.Element {
-  return <tr className={styles.tr}>{children}</tr>;
+  return <tr className={styles["tr"]}>{children}</tr>;
 }
 
 export function TableHeaderCell({
@@ -124,10 +124,11 @@ export function TableHeaderCell({
 }: TableHeaderCellProps): JSX.Element {
   return (
     <th
+      scope="col"
       className={cn(
-        styles.th,
-        align === "right" ? styles.right : undefined,
-        mono ? styles.mono : undefined,
+        styles["th"],
+        align === "right" ? styles["right"] : undefined,
+        mono ? styles["mono"] : undefined,
       )}
     >
       {children}
@@ -139,9 +140,9 @@ export function TableCell({ children, align, mono }: TableCellProps): JSX.Elemen
   return (
     <td
       className={cn(
-        styles.td,
-        align === "right" ? styles.right : undefined,
-        mono ? styles.mono : undefined,
+        styles["td"],
+        align === "right" ? styles["right"] : undefined,
+        mono ? styles["mono"] : undefined,
       )}
     >
       {children}

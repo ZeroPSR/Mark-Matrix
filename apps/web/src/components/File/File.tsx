@@ -25,18 +25,18 @@ export function File({ label, accept, onChange }: FileProps): JSX.Element {
   };
 
   return (
-    <div className={styles.wrap}>
-      <label htmlFor={id} className={styles.label}>{label}</label>
+    <div className={styles["wrap"]}>
+      <label htmlFor={id} className={styles["label"]}>{label}</label>
       <input
         id={id}
         type="file"
         accept={accept}
-        className={styles.input}
+        className={styles["input"]}
         onChange={handle}
         aria-label={label}
       />
       {name !== null && (
-        <span className={styles.filename}>{name} <Button variant="ghost" size="sm" onClick={clear}>Remove</Button></span>
+        <span className={styles["filename"]}>{name} <Button variant="ghost" size="sm" onClick={clear}>Remove</Button></span>
       )}
     </div>
   );

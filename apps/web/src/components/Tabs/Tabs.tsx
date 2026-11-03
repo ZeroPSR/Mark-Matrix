@@ -11,13 +11,13 @@ export interface TabsProps {
 
 export function Tabs({ items, activeId, onChange, ariaLabel }: TabsProps): JSX.Element {
   return (
-    <div role="tablist" aria-label={ariaLabel} className={styles.tablist}>
+    <div role="tablist" aria-label={ariaLabel} className={styles["tablist"]}>
       {items.map((it) => (
         <button
           key={it.id}
           role="tab"
           aria-selected={it.id === activeId}
-          className={styles.tab}
+          className={styles["tab"]}
           onClick={() => onChange(it.id)}
         >
           {it.label}

@@ -11,7 +11,7 @@ export function Input({ type = "text", className, ...rest }: InputProps): JSX.El
   return (
     <input
       type={type}
-      className={cn(styles.input, type === "number" ? styles.mono : undefined, className)}
+      className={cn(styles["input"], type === "number" ? styles["mono"] : undefined, className)}
       {...rest}
     />
   );

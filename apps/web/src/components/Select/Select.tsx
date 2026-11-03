@@ -14,7 +14,7 @@ export interface SelectProps {
 
 export function Select({ options, ...rest }: SelectProps): JSX.Element {
   return (
-    <select className={styles.select} {...rest}>
+    <select className={styles["select"]} {...rest}>
       {options.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
