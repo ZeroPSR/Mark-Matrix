@@ -1,0 +1,36 @@
+/* apps/web/src/pages/student/MyMarksPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.semester {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.semesterHeading {
+  margin: 0;
+}
+
+.course {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.courseHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.courseCode {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink-soft);
+}
+
+.courseTitle {
+  color: var(--color-ink);
+}

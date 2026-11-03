@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import { useResource } from "../../lib/useResource.js";
 import { ROUTES_CYCLE_2, type MarksRow } from "@mark-matrix/shared";
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+import { Table, type TableColumn } from "../../components/Table/Table.js";
+import { Banner } from "../../components/Banner/Banner.js";
+import { Loading } from "../../components/Loading/Loading.js";
+import { Empty } from "../../components/Empty/Empty.js";
+import { ErrorState } from "../../components/ErrorState/ErrorState.js";
+import styles from "./MyMarksPage.module.css";
 
 interface Enrollment {
   id: string;
@@ -8,23 +15,67 @@ interface Enrollment {
   semester: { id: string; number: number; programId: string; batchId: string };
 }
 
+interface Course {
+  id: string;
+  code: string;
+  title: string;
+}
+
+/** One table row per exam type. */
+interface MarksTableRow extends Record<string, unknown> {
+  examType: string;
+  obtained: number;
+  max: number;
+  /** null renders as an em-dash — e.g. when maxMarks is 0. */
+  percentage: string | null;
+  status: string;
+}
+
+const columns: TableColumn<MarksTableRow>[] = [
+  { key: "examType", header: "Exam type" },
+  { key: "obtained", header: "Marks obtained", align: "right", mono: true },
+  { key: "max", header: "Max", align: "right", mono: true },
+  { key: "percentage", header: "Percentage", align: "right", mono: true },
+  { key: "status", header: "Status" },
+];
+
 export function StudentMyMarksPage(): JSX.Element {
   const enrollments = useResource<{ data: Enrollment[] }>(ROUTES_CYCLE_2.studentEnrollment);
-  const mySem = (enrollments.data?.data ?? []).map((e) => e.semester);
+  const mySem = useMemo(
+    () => (enrollments.data?.data ?? []).map((e) => e.semester),
+    [enrollments.data],
+  );
+
+  const hasSemesters = mySem.length > 0;
+  const showLoading = enrollments.loading && !hasSemesters;
+  const showError = enrollments.error !== null && !hasSemesters;
 
   return (
-    <main className="my-marks">
-      <h1>My Marks</h1>
-      {mySem.length === 0 && <p>No enrollments yet.</p>}
-      {mySem.map((s) => (
-        <section key={s.id} className="my-marks__course">
-          <h2>Semester {s.number}</h2>
-          <p className="my-marks__hint">
-            Showing marks per course you take in this semester.
-          </p>
-          <CoursesInSemester batchId={s.batchId} programId={s.programId} semId={s.id} />
-        </section>
-      ))}
+    <main className={styles["page"]}>
+      <PageTitle
+        eyebrow="Student · Marks"
+        subtitle="Marks for every course in the semesters you are enrolled in."
+      >
+        My Marks
+      </PageTitle>
+
+      {showLoading && <Loading />}
+      {showError && (
+        <ErrorState onRetry={() => window.location.reload()}>{enrollments.error}</ErrorState>
+      )}
+
+      {!showLoading &&
+        !showError &&
+        (hasSemesters ? (
+          mySem.map((s) => (
+            <section key={s.id} className={styles["semester"]}>
+              <h2 className={styles["semesterHeading"]}>Semester {s.number}</h2>
+              <CoursesInSemester batchId={s.batchId} programId={s.programId} semId={s.id} />
+            </section>
+          ))
+        ) : (
+          <Empty>You have no enrollments yet.</Empty>
+        ))}
     </main>
   );
 }
@@ -38,24 +89,38 @@ function CoursesInSemester({
   programId: string;
   semId: string;
 }): JSX.Element {
-  const courses = useResource<{ data: { id: string; code: string; title: string }[] }>(
+  // The student has no /api/student/courses endpoint yet, so we hit the admin
+  // courses endpoint filtered by semesterId — RLS scopes it to the student's
+  // visible rows.
+  const courses = useResource<{ data: Course[] }>(
     `${ROUTES_CYCLE_2.adminCourses}?semesterId=${semId}`,
   );
+  const list = courses.data?.data ?? [];
+  const showLoading = courses.loading && list.length === 0;
+  const showError = courses.error !== null && list.length === 0;
 
   return (
-    <ul className="my-marks__course-list">
-      {(courses.data?.data ?? []).map((c) => (
-        <li key={c.id} className="my-marks__course-row">
-          <strong>{c.code}</strong> — {c.title}
-          <CourseMarks
-            batchId={batchId}
-            programId={programId}
-            semId={semId}
-            courseId={c.id}
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      {showLoading && <Loading />}
+      {showError && (
+        <ErrorState onRetry={() => window.location.reload()}>{courses.error}</ErrorState>
+      )}
+      {!showLoading &&
+        !showError &&
+        (list.length === 0 ? (
+          <Empty>No courses in this semester yet.</Empty>
+        ) : (
+          list.map((c) => (
+            <section key={c.id} className={styles["course"]}>
+              <h3 className={styles["courseHeading"]}>
+                <span className={styles["courseCode"]}>{c.code}</span>
+                <span className={styles["courseTitle"]}>{c.title}</span>
+              </h3>
+              <CourseMarks batchId={batchId} programId={programId} semId={semId} courseId={c.id} />
+            </section>
+          ))
+        ))}
+    </>
   );
 }
 
@@ -76,25 +141,40 @@ function CourseMarks({
     () => (rows.data?.data ?? []).slice().sort((a, b) => a.examType.localeCompare(b.examType)),
     [rows.data],
   );
-  if (list.length === 0) {
-    return <p className="my-marks__empty">No marks yet.</p>;
-  }
+
+  const tableRows: MarksTableRow[] = useMemo(
+    () =>
+      list.map((r) => ({
+        examType: r.examType,
+        obtained: r.marksObtained,
+        max: r.maxMarks,
+        // A maxMarks of 0 would divide by zero — leave the cell empty.
+        percentage: r.maxMarks > 0 ? `${Math.round((r.marksObtained / r.maxMarks) * 100)}%` : null,
+        status: r.status,
+      })),
+    [list],
+  );
+
+  const showLoading = rows.loading && list.length === 0;
+  const showError = rows.error !== null && list.length === 0;
+
+  if (showLoading) return <Loading />;
+  if (showError)
+    return <ErrorState onRetry={() => window.location.reload()}>{rows.error}</ErrorState>;
+  if (list.length === 0) return <Empty>No marks yet.</Empty>;
+
+  // Draft rows are still being edited by the faculty, so the student is
+  // looking at provisional numbers.
+  const provisional = list.some((r) => r.status === "draft");
+
   return (
-    <ul className="my-marks__list">
-      {list.map((r) => (
-        <li key={r.id} className="my-marks__item">
-          <span className="my-marks__exam">{r.examType}: </span>
-          <span className="my-marks__score">
-            {r.marksObtained} / {r.maxMarks}
-          </span>
-          <span className="my-marks__pct">
-            {Math.round((r.marksObtained / r.maxMarks) * 100)}%
-          </span>
-          <span className={"my-marks__status my-marks__status--" + r.status}>
-            {r.status}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <>
+      {provisional && (
+        <Banner variant="warning" title="Provisional marks">
+          These marks have not been finalised yet and may still change.
+        </Banner>
+      )}
+      <Table<MarksTableRow> columns={columns} rows={tableRows} emptyMessage="No marks yet." />
+    </>
   );
 }
