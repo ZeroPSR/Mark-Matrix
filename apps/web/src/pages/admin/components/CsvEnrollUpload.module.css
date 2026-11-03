@@ -1,0 +1,39 @@
+/* apps/web/src/pages/admin/components/CsvEnrollUpload.module.css */
+.wrap {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.preview {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+/* The report spans the full width: error payloads can be long, and a
+   shrink-to-fit banner would let them overflow. */
+.report {
+  width: 100%;
+}
+
+.details {
+  margin-top: var(--space-2);
+}
+
+.details summary {
+  cursor: pointer;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+
+.errorList {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-4);
+}
+
+.errorList li {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+}

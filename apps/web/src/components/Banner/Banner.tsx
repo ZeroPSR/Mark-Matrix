@@ -16,7 +16,9 @@ export function Banner({ variant, title, children }: BannerProps): JSX.Element {
   return (
     <div className={cn(styles.banner, styles[variant])} role={role}>
       {title !== undefined && <p className={styles.title}>{title}</p>}
-      <p className={styles.body}>{children}</p>
+      {/* The body is a div, not a p: banners may carry block content
+          (e.g. a collapsible <details> list), which a <p> cannot hold. */}
+      <div className={styles.body}>{children}</div>
     </div>
   );
 }

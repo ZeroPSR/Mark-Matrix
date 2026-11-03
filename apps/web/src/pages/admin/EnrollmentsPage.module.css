@@ -1,0 +1,42 @@
+/* apps/web/src/pages/admin/EnrollmentsPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(220px, 340px) auto;
+  gap: var(--space-4);
+  align-items: end;
+}
+
+/* The Field component carries its own bottom margin; match it so the
+   button's baseline lines up with the selects. */
+.enrollButton {
+  margin-bottom: var(--space-4);
+}
+
+.hint {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .form { grid-template-columns: 1fr; }
+  .enrollButton { margin-bottom: 0; }
+}
