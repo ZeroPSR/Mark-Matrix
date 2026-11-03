@@ -69,3 +69,82 @@ export function Table<Row extends Record<string, unknown>>({
     </table>
   );
 }
+
+/* Lower-level building blocks, for pages whose column count is dynamic (a
+   pivot grid, say) and therefore cannot be expressed by the column-keyed
+   `Table` above. They reuse the same CSS-module classes, so a grid built
+   from them looks identical to the high-level component. */
+
+export interface TableHeadProps {
+  /** Header cells — rendered inside a single `<tr>`. */
+  children: ReactNode;
+}
+
+export interface TableBodyProps {
+  /** Rows — each one a `<TableRow>`. */
+  children: ReactNode;
+}
+
+export interface TableRowProps {
+  children: ReactNode;
+}
+
+export interface TableHeaderCellProps {
+  children: ReactNode;
+  align?: "left" | "right";
+  mono?: boolean;
+}
+
+export interface TableCellProps {
+  children: ReactNode;
+  align?: "left" | "right";
+  mono?: boolean;
+}
+
+export function TableHead({ children }: TableHeadProps): JSX.Element {
+  return (
+    <thead className={styles.thead}>
+      <tr>{children}</tr>
+    </thead>
+  );
+}
+
+export function TableBody({ children }: TableBodyProps): JSX.Element {
+  return <tbody>{children}</tbody>;
+}
+
+export function TableRow({ children }: TableRowProps): JSX.Element {
+  return <tr className={styles.tr}>{children}</tr>;
+}
+
+export function TableHeaderCell({
+  children,
+  align,
+  mono,
+}: TableHeaderCellProps): JSX.Element {
+  return (
+    <th
+      className={cn(
+        styles.th,
+        align === "right" ? styles.right : undefined,
+        mono ? styles.mono : undefined,
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+export function TableCell({ children, align, mono }: TableCellProps): JSX.Element {
+  return (
+    <td
+      className={cn(
+        styles.td,
+        align === "right" ? styles.right : undefined,
+        mono ? styles.mono : undefined,
+      )}
+    >
+      {children}
+    </td>
+  );
+}

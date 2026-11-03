@@ -1,0 +1,19 @@
+/* apps/web/src/pages/faculty/RosterAttendancePage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.meta {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+/* Read-only status text in the admin view. */
+.status {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
