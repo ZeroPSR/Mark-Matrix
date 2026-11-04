@@ -1,8 +1,13 @@
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+
 export function StudentPlaceholder(): JSX.Element {
   return (
-    <section>
-      <h2>My Results</h2>
-      <p>Student results view (Cycle 5+).</p>
-    </section>
+    <article>
+      <PageTitle eyebrow="Student · Results" subtitle="Student results view (Cycle 5+).">
+        My Results
+      </PageTitle>
+    </article>
   );
 }
+
+export default StudentPlaceholder;
