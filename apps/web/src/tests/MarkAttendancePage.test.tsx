@@ -38,10 +38,10 @@ function mockApi(options: MockOptions = {}): void {
     if (path === "/api/faculty/courses") {
       return Promise.resolve({ data: options.courses ?? [COURSE] });
     }
-    if (path.startsWith("/api/admin/enrollments")) {
+    if (path.startsWith("/api/faculty/enrollments")) {
       return Promise.resolve({ data: options.enrollments ?? ENROLLMENTS });
     }
-    if (path === "/api/admin/students") {
+    if (path === "/api/faculty/students") {
       return Promise.resolve({ data: options.students ?? STUDENTS });
     }
     return Promise.resolve({ data: [] });
@@ -61,10 +61,10 @@ function mockApiWithSaveFailure(body: {
     if (path === "/api/faculty/courses") {
       return Promise.resolve({ data: [COURSE] });
     }
-    if (path.startsWith("/api/admin/enrollments")) {
+    if (path.startsWith("/api/faculty/enrollments")) {
       return Promise.resolve({ data: ENROLLMENTS });
     }
-    if (path === "/api/admin/students") {
+    if (path === "/api/faculty/students") {
       return Promise.resolve({ data: STUDENTS });
     }
     return Promise.resolve({ data: [] });

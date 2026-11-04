@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createEnrollmentSchema,
@@ -60,25 +60,31 @@ async function deriveContext(
   return { batchId: row.programs.batch_id, programId: row.program_id };
 }
 
+/**
+ * Read enrollments. Exported so the read-only faculty mount can serve the
+ * same query — RLS scopes the rows to the semesters the caller teaches.
+ */
+export async function listEnrollments(c: Context<AppEnv>): Promise<Response> {
+  const supabase = c.get("supabase");
+  let query = supabase
+    .from("student_enrollments")
+    .select("id, student_id, batch_id, program_id, sem_id, enrollment_date");
+  const semId = c.req.query("semId");
+  if (semId) query = query.eq("sem_id", semId);
+  const studentId = c.req.query("studentId");
+  if (studentId) query = query.eq("student_id", studentId);
+  const { data, error } = await query;
+  if (error) {
+    const m = mapPgError(error);
+    return c.json(m.body, m.status);
+  }
+  return c.json({
+    data: (data ?? []).map((r) => fromRow(r as unknown as Row)),
+  });
+}
+
 export const adminEnrollmentsRoute = new Hono<AppEnv>()
-  .get("/", async (c) => {
-    const supabase = c.get("supabase");
-    let query = supabase
-      .from("student_enrollments")
-      .select("id, student_id, batch_id, program_id, sem_id, enrollment_date");
-    const semId = c.req.query("semId");
-    if (semId) query = query.eq("sem_id", semId);
-    const studentId = c.req.query("studentId");
-    if (studentId) query = query.eq("student_id", studentId);
-    const { data, error } = await query;
-    if (error) {
-      const m = mapPgError(error);
-      return c.json(m.body, m.status);
-    }
-    return c.json({
-      data: (data ?? []).map((r) => fromRow(r as unknown as Row)),
-    });
-  })
+  .get("/", listEnrollments)
   .post("/", async (c) => {
     const supabase = c.get("supabase");
     const body = await c.req.json().catch(() => null);

@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import {
   createStudentProfileSchema,
   createFacultyProfileSchema,
@@ -64,8 +64,11 @@ const buildSatellite = (
   return base;
 };
 
-const students = new Hono<AppEnv>();
-students.get("/", async (c) => {
+/**
+ * Read the student roster. Exported so the read-only faculty mount can serve
+ * the same query — RLS scopes the rows to the semesters the caller teaches.
+ */
+export async function listStudents(c: Context<AppEnv>): Promise<Response> {
   const supabase = c.get("supabase");
   const { data, error } = await supabase
     .from("student_profiles")
@@ -79,7 +82,10 @@ students.get("/", async (c) => {
     return buildSatellite(r.profiles, r);
   });
   return c.json({ data: out });
-});
+}
+
+const students = new Hono<AppEnv>();
+students.get("/", listStudents);
 students.post("/", async (c) => {
   const supabase = c.get("supabase");
   const body = await c.req.json().catch(() => null);

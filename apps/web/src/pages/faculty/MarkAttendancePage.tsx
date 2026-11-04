@@ -78,9 +78,9 @@ export function FacultyMarkAttendancePage(): JSX.Element {
   );
 
   const enrollments = useResource<{ data: Enrollment[] }>(
-    course ? `${ROUTES_CYCLE_2.adminEnrollments}?semId=${course.semester.id}` : null,
+    course ? `${ROUTES_CYCLE_2.facultyEnrollments}?semId=${course.semester.id}` : null,
   );
-  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.adminStudents);
+  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.facultyStudents);
 
   const studentById = useMemo(() => {
     const m = new Map<string, StudentSat>();

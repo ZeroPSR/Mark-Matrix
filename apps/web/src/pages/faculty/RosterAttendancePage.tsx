@@ -48,7 +48,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
     [courses.data, courseId],
   );
 
-  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.adminStudents);
+  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.facultyStudents);
 
   const path = course
     ? ROUTES_CYCLE_2[`${role}Attendance`](role, course.semester.batchId, course.semester.programId, course.semester.id, course.id)

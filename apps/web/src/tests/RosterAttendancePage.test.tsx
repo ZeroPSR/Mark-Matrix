@@ -17,7 +17,7 @@ vi.mock("../lib/api.js", () => ({
         ],
       });
     }
-    if (path === "/api/admin/students") {
+    if (path === "/api/faculty/students") {
       return Promise.resolve({
         data: [
           { userId: "u1", name: "Asha Rao", rollNumber: "21" },

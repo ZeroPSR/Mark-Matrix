@@ -62,6 +62,11 @@ export const ROUTES_CYCLE_2 = {
 
   // Faculty
   facultyCourses: "/api/faculty/courses",
+  // Read-only mounts. Faculty need the roster of students in the semesters
+  // they teach to take attendance; RLS scopes the rows to those semesters.
+  // These expose GET only — the write routes stay on the admin mounts.
+  facultyStudents: "/api/faculty/students",
+  facultyEnrollments: "/api/faculty/enrollments",
 
   // Student
   studentEnrollment: "/api/student/enrollment",

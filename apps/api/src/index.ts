@@ -35,6 +35,10 @@ import {
 } from "./routes/grades/cgpa.js";
 import { facultyCoursesRoute } from "./routes/faculty/courses.js";
 import { courseExamTypesRoute } from "./routes/faculty/courseExamTypes.js";
+import {
+  facultyStudentsRoute,
+  facultyEnrollmentsRoute,
+} from "./routes/faculty/roster.js";
 import { adminMarksLifecycleRoute } from "./routes/admin/marksLifecycle.js";
 import { adminGradesheetsRoute } from "./routes/admin/gradesheets.js";
 import { adminAuditLogRoute } from "./routes/admin/auditLog.js";
@@ -124,6 +128,10 @@ app.route("/api/admin/audit-log", adminAuditLogRoute);
 app.use("/api/faculty/*", requireRole("faculty"));
 app.route(ROUTES_CYCLE_2.facultyCourses, facultyCoursesRoute);
 app.route("/api/faculty/courses", courseExamTypesRoute);
+// Read-only roster mounts. RLS scopes the rows to the semesters the caller
+// teaches; the write routes stay on the admin mounts.
+app.route(ROUTES_CYCLE_2.facultyStudents, facultyStudentsRoute);
+app.route(ROUTES_CYCLE_2.facultyEnrollments, facultyEnrollmentsRoute);
 app.route(
   "/api/faculty/batch/:batchId/program/:programId/sem/:semId/course/:courseId/attendance",
   attendanceRoute,
