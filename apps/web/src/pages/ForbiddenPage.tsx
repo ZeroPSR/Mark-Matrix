@@ -1,8 +1,11 @@
+import { PageTitle } from "../components/PageTitle/PageTitle.js";
+import { Empty } from "../components/Empty/Empty.js";
+
 export function ForbiddenPage(): JSX.Element {
   return (
-    <section className="app-error">
-      <h2>Forbidden</h2>
-      <p>Your role does not have access to that page.</p>
-    </section>
+    <article>
+      <PageTitle>Forbidden</PageTitle>
+      <Empty>You don't have permission to view this page.</Empty>
+    </article>
   );
 }

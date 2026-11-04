@@ -1,8 +1,11 @@
+import { PageTitle } from "../components/PageTitle/PageTitle.js";
+import { Empty } from "../components/Empty/Empty.js";
+
 export function NotFoundPage(): JSX.Element {
   return (
-    <section className="app-error">
-      <h2>Not found</h2>
-      <p>That page does not exist.</p>
-    </section>
+    <article>
+      <PageTitle>Not found</PageTitle>
+      <Empty>The page you were looking for doesn't exist.</Empty>
+    </article>
   );
 }
