@@ -1,0 +1,51 @@
+/* apps/web/src/pages/admin/AnalyticsDashboardPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The course picker is one control — keep it narrow on wide screens. */
+.picker {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem);
+}
+
+/* Field carries a bottom margin for stacked forms; this bar is not stacked. */
+.picker > div {
+  margin-bottom: 0;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.panelTitle {
+  font: 600 var(--type-h2) "Source Serif 4", Georgia, serif;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.figure {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* Course code, title and the "active" marker sit on one line. */
+.courseCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.download {
+  justify-self: start;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-blue);
+  text-decoration: underline;
+}
+
+.download:hover {
+  color: var(--color-ink);
+}
