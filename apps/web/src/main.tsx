@@ -5,6 +5,7 @@ import { App } from "./App.js";
 import { AuthProvider } from "./auth/AuthContext.js";
 import { initTheme } from "./styles/theme.js";
 import "./styles.css";
+import "./styles/globals.css";
 
 initTheme();
 
