@@ -30,6 +30,11 @@ Thumbs.db
 # Test
 coverage/
 
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/.playwright/
+
 # Isolated workspaces
 .claude/worktrees/
 
