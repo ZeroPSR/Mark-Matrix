@@ -1,6 +1,10 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { Button } from "../components/Button/Button.js";
+import { Field } from "../components/Field/Field.js";
+import { Input } from "../components/Input/Input.js";
+import styles from "./LoginPage.module.css";
 
 export function LoginPage(): JSX.Element {
   const { signIn } = useAuth();
@@ -24,31 +28,32 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <main className="app-login">
-      <form onSubmit={onSubmit} className="app-login__form">
-        <h1>Mark-Matrix</h1>
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <label htmlFor="password">Password</label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {error && <p className="app-login__error" role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+    <main className={styles["page"]}>
+      <form onSubmit={onSubmit} className={styles["card"]}>
+        <h1 className={styles["title"]}>Mark-Matrix</h1>
+        <Field label="Email" htmlFor="email">
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Field>
+        <Field label="Password" htmlFor="password" error={error ?? undefined}>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </Field>
+        <Button type="submit" disabled={submitting}>
           {submitting ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </main>
   );
