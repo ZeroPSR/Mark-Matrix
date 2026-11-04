@@ -134,6 +134,8 @@ export function UsersPage(): JSX.Element {
       </section>
       {profiles.loading ? (
         <Loading />
+      ) : profiles.error !== null ? (
+        <ErrorState onRetry={profiles.refetch}>{profiles.error}</ErrorState>
       ) : (
         <>
           <Table<Row>

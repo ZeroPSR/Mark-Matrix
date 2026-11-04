@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { UsersPage } from "../pages/admin/UsersPage.js";
 
@@ -16,8 +16,13 @@ beforeEach(() => {
   profilesMock.mockReset();
 });
 
-function mockUseResource(data: unknown, loading = false, error: string | null = null): void {
-  profilesMock.mockReturnValue({ data, loading, error, refetch: () => {} });
+function mockUseResource(
+  data: unknown,
+  loading = false,
+  error: string | null = null,
+  refetch: () => void = () => {},
+): void {
+  profilesMock.mockReturnValue({ data, loading, error, refetch });
 }
 
 describe("UsersPage", () => {
@@ -60,5 +65,21 @@ describe("UsersPage", () => {
       </MemoryRouter>,
     );
     expect(screen.getByText(/no users match/i)).toBeInTheDocument();
+  });
+
+  it("surfaces a failed user load instead of an empty table", () => {
+    const refetch = vi.fn();
+    mockUseResource(null, false, "load_failed", refetch);
+    render(
+      <MemoryRouter>
+        <UsersPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("load_failed");
+    // The empty table would tell the admin there are no users — a lie.
+    expect(screen.queryByText(/no users match/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

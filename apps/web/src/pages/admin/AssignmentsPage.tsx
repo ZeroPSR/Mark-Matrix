@@ -83,12 +83,21 @@ export function AssignmentsPage(): JSX.Element {
   const rows: Row[] = pageRows.map((a) => {
     const c = courseById.get(a.courseId);
     const f = facultyById.get(a.facultyId);
+    const courseCode = c ? `${c.code} — ${c.title}` : a.courseId;
+    const facultyName = f
+      ? `${f.name}${f.employeeCode ? ` (${f.employeeCode})` : ""}`
+      : a.facultyId;
     return {
-      courseCode: c ? `${c.code} — ${c.title}` : a.courseId,
-      facultyName: f ? `${f.name}${f.employeeCode ? ` (${f.employeeCode})` : ""}` : a.facultyId,
+      courseCode,
+      facultyName,
       assignedDate: a.assignedDate,
       actions: (
-        <Button variant="ghost" size="sm" onClick={() => void remove(a.id)}>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Remove assignment for ${facultyName} in ${courseCode}`}
+          onClick={() => void remove(a.id)}
+        >
           Remove
         </Button>
       ),
@@ -108,30 +117,40 @@ export function AssignmentsPage(): JSX.Element {
       {error !== null && <ErrorState onRetry={() => setError(null)}>{error}</ErrorState>}
       {info !== null && <Banner variant="success">{info}</Banner>}
       <section className={styles["filterBar"]} role="group" aria-label="New assignment">
-        <Select
-          aria-label="Course"
-          value={courseId}
-          onChange={(e) => setCourseId(e.target.value)}
-          options={[
-            { value: "", label: "— pick a course —" },
-            ...(courses.data?.data ?? []).map((c) => ({
-              value: c.id,
-              label: `${c.code} — ${c.title}`,
-            })),
-          ]}
-        />
-        <Select
-          aria-label="Faculty"
-          value={facultyId}
-          onChange={(e) => setFacultyId(e.target.value)}
-          options={[
-            { value: "", label: "— pick a faculty member —" },
-            ...(faculty.data?.data ?? []).map((f) => ({
-              value: f.userId,
-              label: `${f.name}${f.employeeCode ? ` (${f.employeeCode})` : ""}`,
-            })),
-          ]}
-        />
+        {courses.error !== null ? (
+          <ErrorState onRetry={courses.refetch}>{courses.error}</ErrorState>
+        ) : (
+          <Select
+            aria-label="Course"
+            value={courseId}
+            disabled={courses.loading}
+            onChange={(e) => setCourseId(e.target.value)}
+            options={[
+              { value: "", label: "— pick a course —" },
+              ...(courses.data?.data ?? []).map((c) => ({
+                value: c.id,
+                label: `${c.code} — ${c.title}`,
+              })),
+            ]}
+          />
+        )}
+        {faculty.error !== null ? (
+          <ErrorState onRetry={faculty.refetch}>{faculty.error}</ErrorState>
+        ) : (
+          <Select
+            aria-label="Faculty"
+            value={facultyId}
+            disabled={faculty.loading}
+            onChange={(e) => setFacultyId(e.target.value)}
+            options={[
+              { value: "", label: "— pick a faculty member —" },
+              ...(faculty.data?.data ?? []).map((f) => ({
+                value: f.userId,
+                label: `${f.name}${f.employeeCode ? ` (${f.employeeCode})` : ""}`,
+              })),
+            ]}
+          />
+        )}
         <div className={styles["actions"]}>
           <Button
             variant="primary"
@@ -145,6 +164,8 @@ export function AssignmentsPage(): JSX.Element {
       </section>
       {assignments.loading ? (
         <Loading />
+      ) : assignments.error !== null ? (
+        <ErrorState onRetry={assignments.refetch}>{assignments.error}</ErrorState>
       ) : (
         <>
           <Table<Row> columns={columns} rows={rows} emptyMessage="No faculty assignments yet." />
