@@ -16,4 +16,8 @@ describe("Banner", () => {
     render(<Banner variant="success">Saved</Banner>);
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
+  it("renders the body as a div so block content stays valid", () => {
+    render(<Banner variant="warning" title="Heads up">Migrate before Friday</Banner>);
+    expect(screen.getByText("Migrate before Friday").tagName).toBe("DIV");
+  });
 });

@@ -25,4 +25,17 @@ describe("File", () => {
     await userEvent.click(screen.getByRole("button", { name: /remove/i }));
     expect(screen.queryByText("a.csv")).toBeNull();
   });
+  it("reports the file again when the same file is picked after being removed", async () => {
+    const fn = vi.fn();
+    render(<FilePicker label="Upload" onChange={fn} />);
+    const input = screen.getByLabelText(/upload/i);
+    const csv = new window.File(["x"], "a.csv", { type: "text/csv" });
+
+    await userEvent.upload(input, csv);
+    await userEvent.click(screen.getByRole("button", { name: /remove/i }));
+    await userEvent.upload(input, csv);
+
+    expect(fn).toHaveBeenLastCalledWith(csv);
+    expect(screen.getByText("a.csv")).toBeInTheDocument();
+  });
 });

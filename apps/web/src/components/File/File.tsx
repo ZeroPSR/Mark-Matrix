@@ -1,5 +1,5 @@
 // apps/web/src/components/File/File.tsx
-import { useState, useId, type ChangeEvent } from "react";
+import { useState, useId, useRef, type ChangeEvent } from "react";
 import { Button } from "../Button/Button.js";
 import styles from "./File.module.css";
 
@@ -11,6 +11,7 @@ export interface FileProps {
 
 export function File({ label, accept, onChange }: FileProps): JSX.Element {
   const id = useId();
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState<string | null>(null);
 
   const handle = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -20,6 +21,10 @@ export function File({ label, accept, onChange }: FileProps): JSX.Element {
   };
 
   const clear = (): void => {
+    // Reset the native input as well: a file input keeps its selection until
+    // its value is cleared, and a browser fires no change event when the very
+    // same file is picked again — which would strand the user.
+    if (inputRef.current !== null) inputRef.current.value = "";
     setName(null);
     onChange(null);
   };
@@ -34,6 +39,7 @@ export function File({ label, accept, onChange }: FileProps): JSX.Element {
         className={styles["input"]}
         onChange={handle}
         aria-label={label}
+        ref={inputRef}
       />
       {name !== null && (
         <span className={styles["filename"]}>{name} <Button variant="ghost" size="sm" onClick={clear}>Remove</Button></span>
