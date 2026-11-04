@@ -1,0 +1,84 @@
+/* apps/web/src/pages/admin/AuditLogPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.filterBar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+}
+
+/* Field carries a bottom margin for stacked forms; this bar is a grid. */
+.filterBar > div {
+  margin-bottom: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+}
+
+/* Native datetime inputs, styled like the design-system Input. */
+.dateInput {
+  border: none;
+  border-bottom: 1px solid var(--color-hairline);
+  background: transparent;
+  padding: var(--space-2) 0;
+  min-width: 10rem;
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink);
+}
+
+.dateInput:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-ink-blue);
+  margin-bottom: -1px;
+}
+
+/* The timestamp doubles as the row toggle. */
+.timestampButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: 400 var(--type-body) "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+  text-align: left;
+}
+
+.timestampButton:hover {
+  color: var(--color-ink-blue);
+}
+
+.timestampButton:focus-visible {
+  outline: 2px solid var(--color-ink-blue);
+  outline-offset: var(--space-1);
+}
+
+/* The expanded row carries the old/new payloads of the audited record. */
+.detail {
+  background: var(--color-surface-sunk);
+}
+
+.detail pre {
+  margin: 0 0 var(--space-2);
+  font: 400 var(--type-small) "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail pre:last-child {
+  margin-bottom: 0;
+}
