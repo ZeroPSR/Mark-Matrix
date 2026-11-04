@@ -24,16 +24,16 @@ export function MyGradesheetPage(): JSX.Element {
   return (
     <article className="grd">
       <PageTitle eyebrow="Student · Gradesheet">My Gradesheet — Semester {g.semId}</PageTitle>
-      <div className={styles.row}>
+      <div className={styles["row"]}>
         <Badge variant={status === "published" ? "published" : status === "locked" ? "locked" : "draft"}>{status}</Badge>
-        {g.publishedAt !== null && <span className={styles.published}>Published on {g.publishedAt}</span>}
+        {g.publishedAt !== null && <span className={styles["published"]}>Published on {g.publishedAt}</span>}
       </div>
-      <dl className={styles.meta}>
+      <dl className={styles["meta"]}>
         <dt>SGPA</dt>             <dd>{g.sgpa?.toFixed(2) ?? "—"}</dd>
         <dt>Total credits</dt>    <dd>{g.totalCredits ?? "—"}</dd>
         <dt>Courses graded</dt>   <dd>{g.courseCount ?? "—"}</dd>
       </dl>
-      <div className={styles.actions}>
+      <div className={styles["actions"]}>
         <DownloadTranscriptButton
           url={ROUTES_CYCLE_2.studentTranscript("student", batchId, programId, semId)}
           label="Download Transcript"

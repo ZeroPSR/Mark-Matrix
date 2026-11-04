@@ -107,7 +107,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
   const rowsError = rows.error !== null && !rows.data;
 
   return (
-    <main className={styles.page}>
+    <main className={styles["page"]}>
       <PageTitle
         eyebrow={role === "faculty" ? "Faculty · Roster" : "Admin · Roster"}
         subtitle={course ? `${course.code} — ${course.title}` : undefined}
@@ -136,7 +136,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
           )}
 
           {summary.data !== null && (
-            <p className={styles.meta}>
+            <p className={styles["meta"]}>
               {summary.data.data.length} students with attendance records.
             </p>
           )}
@@ -152,7 +152,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
 
           {!rowsLoading && !rowsError && grid.size > 0 && (
             <table
-              className={cn(tableStyles.table, tableStyles.sticky)}
+              className={cn(tableStyles["table"], tableStyles["sticky"])}
               aria-label="Attendance roster"
             >
               <TableHead>
@@ -170,6 +170,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
                   const total = byDate.size;
                   const pct = total === 0 ? 0 : Math.round((present / total) * 10000) / 100;
                   const studentName = s?.name ?? studentId;
+                  const rollNumber = s?.rollNumber;
                   return (
                     <TableRow key={studentId}>
                       <TableCell mono>{s?.rollNumber ?? "—"}</TableCell>
@@ -181,7 +182,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
                           return (
                             <TableCell key={d}>
                               <Select
-                                aria-label={`Attendance status for ${studentName} on ${d}`}
+                                aria-label={`Attendance status for ${studentName} (${rollNumber ?? studentId}) on ${d}`}
                                 options={STATUS_OPTIONS}
                                 value={r.status}
                                 disabled={patching === r.id}
@@ -192,7 +193,7 @@ export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.E
                         }
                         return (
                           <TableCell key={d}>
-                            <span className={styles.status}>{r.status}</span>
+                            <span className={styles["status"]}>{r.status}</span>
                           </TableCell>
                         );
                       })}

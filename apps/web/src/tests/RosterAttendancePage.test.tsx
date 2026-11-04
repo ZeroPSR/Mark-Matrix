@@ -81,9 +81,10 @@ describe("RosterAttendancePage", () => {
     expect(screen.getByText("100%")).toBeInTheDocument();
 
     // Faculty gets a status control per cell, addressable by student + date.
-    expect(screen.getByLabelText("Attendance status for Asha Rao on 2026-09-01")).toHaveValue("present");
-    expect(screen.getByLabelText("Attendance status for Asha Rao on 2026-09-02")).toHaveValue("absent");
-    expect(screen.getByLabelText("Attendance status for Bilal Khan on 2026-09-01")).toHaveValue("late");
+    // The roll number disambiguates students who share a name.
+    expect(screen.getByLabelText("Attendance status for Asha Rao (21) on 2026-09-01")).toHaveValue("present");
+    expect(screen.getByLabelText("Attendance status for Asha Rao (21) on 2026-09-02")).toHaveValue("absent");
+    expect(screen.getByLabelText("Attendance status for Bilal Khan (22) on 2026-09-01")).toHaveValue("late");
   });
 
   it("renders the same roster read-only for admin", async () => {

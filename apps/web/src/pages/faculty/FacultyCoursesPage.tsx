@@ -16,13 +16,13 @@ interface FacultyCourseView {
   semester: { id: string; number: number; programId: string; batchId: string };
 }
 
-interface CourseRow {
+type CourseRow = {
   code: string;
   title: string;
   credits: string;
   context: string;
   actions: JSX.Element;
-}
+};
 
 export function FacultyCoursesPage(): JSX.Element {
   const courses = useResource<{ data: FacultyCourseView[] }>(ROUTES_CYCLE_2.facultyCourses);
@@ -35,7 +35,7 @@ export function FacultyCoursesPage(): JSX.Element {
     credits: String(c.credits),
     context: `Semester ${c.semester.number} · Batch ${c.semester.batchId} · Program ${c.semester.programId}`,
     actions: (
-      <span className={styles.actions}>
+      <span className={styles["actions"]}>
         <Link to={`/faculty/marks/${c.id}`}>Enter marks</Link>
         <Link to={`/faculty/marks/${c.id}/roster`}>Marks roster</Link>
         <Link to={`/faculty/attendance/${c.id}`}>Mark attendance</Link>
@@ -57,7 +57,7 @@ export function FacultyCoursesPage(): JSX.Element {
   const showError = courses.error !== null && !hasData;
 
   return (
-    <main className={styles.page}>
+    <main className={styles["page"]}>
       <PageTitle eyebrow="Faculty" subtitle="Courses assigned to you this term">
         My Courses
       </PageTitle>

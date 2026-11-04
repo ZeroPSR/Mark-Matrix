@@ -62,15 +62,15 @@ export function StudentMyAttendancePage(): JSX.Element {
     );
 
   return (
-    <article className={styles.page}>
+    <article className={styles["page"]}>
       <PageTitle eyebrow="Student · Attendance">My Attendance</PageTitle>
 
       {mySem.length === 0 && <Empty>No enrollments yet.</Empty>}
 
       {mySem.map((s) => (
-        <section key={s.id} className={styles.semester}>
-          <h2 className={styles.semesterTitle}>Semester {s.number}</h2>
-          <p className={styles.hint}>Showing attendance per course you take in this semester.</p>
+        <section key={s.id} className={styles["semester"]}>
+          <h2 className={styles["semesterTitle"]}>Semester {s.number}</h2>
+          <p className={styles["hint"]}>Showing attendance per course you take in this semester.</p>
           <CoursesInSemester batchId={s.batchId} programId={s.programId} semId={s.id} />
         </section>
       ))}
@@ -119,7 +119,7 @@ function CoursesInSemester({
   }, []);
 
   return (
-    <div className={styles.courses}>
+    <div className={styles["courses"]}>
       {showLoading && <Loading />}
       {showError && (
         <ErrorState onRetry={() => window.location.reload()}>
@@ -207,8 +207,8 @@ function SummaryTable({
   ];
 
   return (
-    <div className={styles.block}>
-      <h3 className={styles.subhead}>Summary</h3>
+    <div className={styles["block"]}>
+      <h3 className={styles["subhead"]}>Summary</h3>
       {lowAttendance.length > 0 && (
         <Banner variant="warning">
           You are below the {LOW_ATTENDANCE_THRESHOLD}% attendance threshold in{" "}
@@ -252,8 +252,8 @@ function HistoryTable({
   ];
 
   return (
-    <div className={styles.block}>
-      <h3 className={styles.subhead}>Sessions</h3>
+    <div className={styles["block"]}>
+      <h3 className={styles["subhead"]}>Sessions</h3>
       <Table<HistoryRow> columns={columns} rows={allRows} emptyMessage="No sessions yet." />
     </div>
   );

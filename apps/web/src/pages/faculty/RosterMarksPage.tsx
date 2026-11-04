@@ -86,7 +86,7 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
   const noEnrollments = rows.data !== null && (enrollments.data?.data ?? []).length === 0;
 
   return (
-    <main className={styles.page}>
+    <main className={styles["page"]}>
       <PageTitle
         eyebrow={role === "faculty" ? "Faculty · Marks roster" : "Admin · Marks roster"}
         subtitle={course ? `${course.code} — ${course.title}` : undefined}
@@ -109,12 +109,12 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
           )}
           {noEnrollments && <Empty>No students are enrolled in this course yet.</Empty>}
           {!noEnrollments && (
-            <table className={styles.table}>
+            <table className={styles["table"]}>
               <thead>
                 <tr>
                   <th>Roll</th>
                   <th>Name</th>
-                  {examTypes.map((e) => <th key={e} className={styles.right}>{e}</th>)}
+                  {examTypes.map((e) => <th key={e} className={styles["right"]}>{e}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -123,15 +123,15 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
                   const byExam = grid.get(e.studentId);
                   return (
                     <tr key={e.studentId}>
-                      <td className={styles.mono}>{s?.rollNumber ?? "—"}</td>
+                      <td className={styles["mono"]}>{s?.rollNumber ?? "—"}</td>
                       <td>{s?.name ?? e.studentId}</td>
                       {examTypes.map((et) => {
                         const r = byExam?.get(et);
-                        if (!r) return <td key={et} className={styles.right}>—</td>;
+                        if (!r) return <td key={et} className={styles["right"]}>—</td>;
                         return (
-                          <td key={et} className={styles.right}>
-                            <span className={styles.score}>{r.marksObtained} / {r.maxMarks}</span>
-                            <small className={cn(styles.status, styles[`status--${r.status}`])}>
+                          <td key={et} className={styles["right"]}>
+                            <span className={styles["score"]}>{r.marksObtained} / {r.maxMarks}</span>
+                            <small className={cn(styles["status"], styles[`status--${r.status}`])}>
                               {r.status}
                             </small>
                           </td>

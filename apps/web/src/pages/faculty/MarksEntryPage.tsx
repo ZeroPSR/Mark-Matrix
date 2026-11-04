@@ -163,13 +163,13 @@ export function FacultyMarksEntryPage(): JSX.Element {
   const courseMissing = !course && courses.data !== null;
 
   return (
-    <main className={styles.page}>
+    <main className={styles["page"]}>
       <PageTitle eyebrow="Faculty · Marks" subtitle={course ? `${course.code} — ${course.title}` : undefined}>
         Enter Marks
       </PageTitle>
 
       {course !== null && (
-        <p className={styles.meta}>
+        <p className={styles["meta"]}>
           <strong>{course.code}</strong> — {course.title} (Semester {course.semester.number})
         </p>
       )}
@@ -188,7 +188,7 @@ export function FacultyMarksEntryPage(): JSX.Element {
             </Banner>
           )}
 
-          <div className={styles.actions}>
+          <div className={styles["actions"]}>
             <Button
               variant="primary"
               onClick={() => void saveDraft()}
@@ -203,19 +203,19 @@ export function FacultyMarksEntryPage(): JSX.Element {
             >
               Submit
             </Button>
-            <div className={styles.csv}>
+            <div className={styles["csv"]}>
               <File label="CSV upload" accept=".csv,text/csv" onChange={onCsvChosen} />
             </div>
           </div>
 
           {message !== null && (
-            <p className={bulkErrors.length > 0 ? styles.errorMessage : styles.message}>
+            <p className={bulkErrors.length > 0 ? styles["errorMessage"] : styles["message"]}>
               {message}
             </p>
           )}
 
           {bulkErrors.length > 0 && (
-            <details className={styles.bulkErrors} open>
+            <details className={styles["bulkErrors"]} open>
               <summary>CSV errors ({bulkErrors.length})</summary>
               <table>
                 <thead>
@@ -234,7 +234,7 @@ export function FacultyMarksEntryPage(): JSX.Element {
             </details>
           )}
 
-          <table className={styles.table}>
+          <table className={styles["table"]}>
             <thead>
               <tr>
                 <th>Roll</th>
@@ -263,7 +263,7 @@ export function FacultyMarksEntryPage(): JSX.Element {
                       const submitted = existing?.status === "submitted";
                       return (
                         <td key={et.examType}>
-                          <div className={styles.cell}>
+                          <div className={styles["cell"]}>
                             <input
                               type="number"
                               min={0}
@@ -272,10 +272,10 @@ export function FacultyMarksEntryPage(): JSX.Element {
                               disabled={isSubmitted || submitted}
                               value={value}
                               onChange={(e) => updateCell(r.studentId, et.examType, e.target.value)}
-                              className={styles.cellInput}
+                              className={styles["cellInput"]}
                               aria-label={`Marks for ${r.label} ${et.examType}`}
                             />
-                            {submitted && <small className={styles.submitted}>submitted</small>}
+                            {submitted && <small className={styles["submitted"]}>submitted</small>}
                           </div>
                         </td>
                       );
