@@ -1,0 +1,33 @@
+/* apps/web/src/pages/faculty/AnalyticsPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+/* The course picker is one control — keep it narrow on wide screens. */
+.picker {
+  display: grid;
+  grid-template-columns: minmax(0, 24rem);
+}
+
+/* Field carries a bottom margin for stacked forms; this bar is not stacked. */
+.picker > div {
+  margin-bottom: 0;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.panelTitle {
+  font: 600 var(--type-h2) "Source Serif 4", Georgia, serif;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.figure {
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink);
+  margin: 0;
+}
