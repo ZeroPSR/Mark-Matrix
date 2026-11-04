@@ -5,6 +5,8 @@ import { Nav } from "../components/Nav/Nav.js";
 import { NAV_ITEMS } from "./navConfig.js";
 import { useAuth } from "../auth/AuthContext.js";
 import { getStoredTheme, toggleTheme, type Theme } from "../styles/theme.js";
+import loadingStyles from "../styles/loading.module.css";
+import styles from "./AppShell.module.css";
 
 export function AppShell(): JSX.Element {
   const { role, userId, signOut } = useAuth();
@@ -28,10 +30,10 @@ export function AppShell(): JSX.Element {
     navigate("/login");
   };
 
-  if (role === null || userId === null) return <div className="app-loading">Loading…</div>;
+  if (role === null || userId === null) return <div className={loadingStyles["loading"]}>Loading…</div>;
 
   return (
-    <div className="app-shell">
+    <div className={styles["shell"]}>
       <Header
         role={role}
         userName={userId}
@@ -40,7 +42,7 @@ export function AppShell(): JSX.Element {
         currentTheme={theme}
       />
       <Nav items={items.map((i) => ({ to: i.to, label: i.label }))} />
-      <main className="app-shell__main"><Outlet /></main>
+      <main className={styles["main"]}><Outlet /></main>
     </div>
   );
 }

@@ -12,6 +12,16 @@ export const colors = {
   backdrop:     "var(--color-backdrop)",
 } as const;
 
+export const type = {
+  display:      "var(--type-display)",
+  h1:           "var(--type-h1)",
+  h2:           "var(--type-h2)",
+  h3:           "var(--type-h3)",
+  body:         "var(--type-body)",
+  small:        "var(--type-small)",
+  mono:         "var(--type-mono)",
+} as const;
+
 export const space = {
   s1: "var(--space-1)",
   s2: "var(--space-2)",
@@ -41,3 +51,4 @@ export const breakpoints = {
 
 export type ColorToken = keyof typeof colors;
 export type SpaceToken = keyof typeof space;
+export type TypeToken = keyof typeof type;

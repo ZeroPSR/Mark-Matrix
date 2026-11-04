@@ -11,11 +11,6 @@
 
   [data-print="hidden"] { display: none !important; }
 
-  .app-shell__header,
-  .app-shell__nav { display: none !important; }
-
-  .app-shell__main { padding: 0 !important; }
-
   table { font-size: var(--type-body); }
 
   body { background: #FFFFFF !important; color: #000000 !important; }

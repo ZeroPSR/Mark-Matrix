@@ -1,0 +1,20 @@
+/* apps/web/src/shell/AppShell.module.css
+   Was the global `.app-shell` / `.app-shell__main` rules in the legacy
+   apps/web/src/styles.css. */
+.shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 100vh;
+}
+.main {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+/* Printing drops the page gutter — the legacy print.css rule did the same
+   with `.app-shell__main { padding: 0 !important; }`. */
+@media print {
+  .main { padding: 0; }
+}

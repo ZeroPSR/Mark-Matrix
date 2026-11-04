@@ -60,4 +60,18 @@ describe("AppShell", () => {
     screen.getByRole("button", { name: /sign out/i }).click();
     expect(signOut).toHaveBeenCalled();
   });
+
+  it("shows the loading state before the session resolves", () => {
+    mockAuth({ userId: null, role: null });
+    render(<MemoryRouter><AppShell /></MemoryRouter>);
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  it("marks the header and nav print-hidden so printing drops the chrome", () => {
+    mockAuth({ userId: "u1", role: "admin" });
+    render(<MemoryRouter><AppShell /></MemoryRouter>);
+    expect(screen.getByRole("banner")).toHaveAttribute("data-print", "hidden");
+    expect(screen.getByRole("navigation")).toHaveAttribute("data-print", "hidden");
+    expect(screen.getByRole("main")).toBeInTheDocument();
+  });
 });
