@@ -1,0 +1,129 @@
+/* apps/web/src/pages/faculty/MarkAttendancePage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.meta {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+/* Field carries a bottom margin for stacked forms; this bar is horizontal. */
+.dateField > div {
+  margin-bottom: 0;
+}
+
+/* Native date input, styled like the design system Input. */
+.dateInput {
+  border: none;
+  border-bottom: 1px solid var(--color-hairline);
+  background: transparent;
+  padding: var(--space-2) 0;
+  min-width: 10rem;
+  font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--color-ink);
+}
+
+.dateInput:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-ink-blue);
+  margin-bottom: -1px;
+}
+
+/* Session tally — present / absent / late counts for the current draft. */
+.tally {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-6);
+  margin: 0;
+}
+
+.tallyItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 7rem;
+}
+
+.tallyLabel {
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+
+.tallyValue {
+  margin: 0;
+  text-align: right;
+  font: 400 var(--type-small) "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.message {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  margin: 0;
+}
+
+.errorMessage {
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-error);
+  margin: 0;
+}
+
+/* Per-student status control. */
+.statusGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font: 400 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.toggle input[type="radio"] {
+  margin: 0;
+  accent-color: var(--color-ink-blue);
+}
+
+.toggle.is-on {
+  color: var(--color-ink-blue);
+  font-weight: 600;
+}
+
+.bulkErrors {
+  margin-top: var(--space-3);
+}
+
+.bulkErrors summary {
+  cursor: pointer;
+  font: 600 var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-warning);
+}
+
+.bulkErrors table {
+  margin-top: var(--space-2);
+}
