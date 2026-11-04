@@ -125,10 +125,10 @@ describe("FacultyMarkAttendancePage", () => {
     const submit = await screen.findByRole("button", { name: "Submit" });
     expect(submit).toBeDisabled();
 
-    await user.click(screen.getByRole("radio", { name: "present for Asha Rao" }));
+    await user.click(await screen.findByRole("radio", { name: "present for Asha Rao" }));
     expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
 
-    await user.click(screen.getByRole("radio", { name: "absent for Bilal Khan" }));
+    await user.click(await screen.findByRole("radio", { name: "absent for Bilal Khan" }));
     expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled();
   });
 
