@@ -416,6 +416,63 @@ Minors also folded into the same round: the forced-colors check does not exercis
 
 Deferred, recorded not fixed: `@axe-core/playwright@4.14.0` declares `node >= 22.12` while the repo declares `node >= 20` and CI installs Node 20 — `.npmrc` has no `engine-strict`, so the install survives with a warning, but the declared support range and the toolchain disagree.
 
+## Task 58 review — the GRANT HELD, but three Important findings, fix round dispatched
+
+The reviewer (Opus) confirmed the authorisation was **not exceeded** on every clause:
+
+- **Exactly two read-only endpoints.** `apps/api/src/routes/faculty/roster.ts:15,17` build two *fresh*
+  `Hono<AppEnv>()` instances with `.get("/")` only. They do not re-export the admin Hono instances, so
+  the admin POST/DELETE handlers are **physically absent** from the faculty mount — `POST`/`DELETE` on
+  `/api/faculty/students` and `/api/faculty/enrollments` match no handler. The GET-only property is
+  enforced **structurally**, not by convention.
+- **Same handlers, same query surface.** The extraction is verbatim; no new query parameters, filters or
+  response fields.
+- **Scoped to taught semesters.** The helper is `exists(… where se.student_id = p_user_id and
+  public.teaches_any_in_semester(se.sem_id))` — semester-granular, exactly the authorised scope.
+- **No service-role reads in handlers.** Both handlers use `c.get("supabase")`, the anon-key client
+  carrying the caller's JWT.
+- **Admin mounts stay admin-only**, and the new mounts are genuinely under the existing
+  `app.use("/api/faculty/*", requireRole("faculty"))` — registered before them.
+- **`search_path` is pinned** on the new SECURITY DEFINER helper, every identifier in its body is
+  schema-qualified, and the revoke/grant pair matches the repo's existing helper pattern.
+- **The `profiles` policy cannot leak a colleague's or an admin's profile row** — `student_enrollments.student_id
+  → student_profiles.user_id → profiles.user_id` with `assert_profile_role('student')`, so only student
+  rows are structurally reachable.
+
+Three Important findings, fix round dispatched:
+
+1. **A regression I introduced.** `RosterAttendancePage.tsx:51` used `facultyStudents`
+   **unconditionally**, but the component renders for **both** roles (`role="faculty"` at
+   `App.tsx:131`, `role="admin"` at `App.tsx:139`). An **admin session gets 403** where it previously got
+   200. The component already had the right pattern at `:53-55` (the attendance path is role-conditional).
+   Fix: select the students URL by role. **The same page's courses fetch at `:45` was already broken for
+   the admin variant** — it used `/api/faculty/courses` unconditionally — so that had to be made
+   role-conditional too, or the students fix alone just surfaces raw `studentId` values in the Name
+   column. The page's test could not catch either, because it mocked a single students URL for both role
+   renders.
+2. **The GET-only guarantee had no automated guard.** A future edit re-pointing `roster.ts` at
+   `adminStudentsRoute` would silently expose `POST`/`DELETE` on the faculty mounts. Fix: an HTTP-level
+   test, following the repo's existing `apps/api/src/tests/negative.admin-route.test.ts` pattern —
+   asserting the GET mounts work for faculty, that POST/DELETE on them are **404**, that a student
+   session gets **403**, and that the admin mounts still work for an admin.
+3. **The "admin is unaffected" RLS test was vacuous** — it ran on the **service-role** client, which
+   bypasses RLS entirely, so it passed whether or not the new policies worked. The admin's real
+   RLS-scoped path (`student_profiles_admin_all` → `is_admin()`) was never exercised. Fix: use an
+   authenticated admin client, which the fixture already provisioned but never used for the assertion.
+
+Minors folded into the same round: the sibling faculty pages `MarksEntryPage.tsx` and `RosterMarksPage.tsx`
+still call the admin mounts on faculty-role routes and so 403 for faculty — pre-existing, and a
+one-line change each **now that the faculty endpoints exist**, but only where the route is faculty-only
+(the fix agent must check each route first). The shared read logic living in admin-namespaced modules is
+cosmetic and may be skipped. The `profiles` policy granting the whole row rather than the two projected
+columns is acceptable (no email lives in `profiles`) but is the one place where a future column addition
+would silently become faculty-readable — noted, not changed.
+
+⚠️ One gap the reviewer flagged that nobody can close here: **the two RLS tests only run under
+`SUPABASE_TEST_RLS=1` with live Supabase credentials.** CI's integration step supplies the URL and the
+service key but **not** `SUPABASE_TEST_RLS`, so `pnpm test:rls` must be run against a live database
+before this change lands. The migration was written but **not applied** for the same reason.
+
 Task 48: implemented (commit f949fd5, tests: focused UnlockModal 7/7; full suite 40 files / 109 tests). Review in flight.
   Task 48: Ruling: the implementer added a `useEffect` on `open` that clears the reason when the modal closes, and kept the legacy `submitting` flag. Neither is in the plan's reference snippet. Justification: under the new `open` API the component stays mounted, so without the reset a stale reason reappears on reopen; the `submitting` flag preserves the legacy in-flight behaviour. Cost if wrong: two small deviations from the plan's snippet, both preserving existing behaviour.
 
