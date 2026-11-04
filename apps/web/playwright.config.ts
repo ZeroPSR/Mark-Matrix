@@ -13,7 +13,9 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev",
     url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
+    // `process.env` is an index signature, so the repo's
+    // `noPropertyAccessFromIndexSignature` rule requires bracket access.
+    reuseExistingServer: !process.env["CI"],
     timeout: 60_000,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
