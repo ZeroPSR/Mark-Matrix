@@ -363,11 +363,58 @@ The legacy stylesheet's class rules have **zero live consumers** (verified), so 
 ## Remaining work queue
 
 1. **Batch C** — Tasks 44 + 45 (ResultsReviewPage, GradesheetAdminPage) + the `Badge` variants `approved` / `compiled` / `neutral`. Running.
-2. **Batch G** — Tasks 49 + 51 landed (install, config, a11y spec) but the specs do not pass; the deep-link 404 workaround is in the scratch `probe.spec.ts`; Task 50 (visual regression) not started. Running.
-3. **Batch E** — Task 47 (AuditLogPage) + Task 59 (StudentPlaceholder, routed but not in the plan). **Held** until Batch C lands the `neutral` Badge variant, so one agent owns `Badge.tsx`.
-4. **Task 58 review** — dispatched on the most capable model; the change is security-sensitive and was written without an implementer.
-5. **Final whole-branch review** — the rollout's last gate, once the above land. Point it at this ledger's deferred-minor and parked lines.
-6. **Task 52** — deferred pending the user's decision.
+2. **Batch E** — Task 47 (AuditLogPage) + Task 59 (StudentPlaceholder, routed but not in the plan). **Held** until Batch C lands the `neutral` Badge variant, so one agent owns `Badge.tsx`.
+3. **Task 58 review** — dispatched on the most capable model; the change is security-sensitive and was written without an implementer.
+4. **Final whole-branch review** — the rollout's last gate, once the above land. Point it at this ledger's deferred-minor and parked lines.
+5. **Task 52** — deferred pending the user's decision.
+
+## Tasks 49 + 51 + 50 — complete (commits `4ae5ccf`, `2b818a2`)
+
+**Playwright 5/5 passing** — 3 a11y specs + 2 visual specs, with the visual baselines stable across 3 consecutive runs.
+
+- `/login` has **zero WCAG 2.1 AA violations** (axe: 0 violations, 12 passes). There were no violations to report.
+- `apps/web/tests/helpers/spa.ts` (new) holds a `gotoSpa` helper that works around the dev server's deep-link 404.
+- `apps/web/tests/visual/page-{light,dark}.spec.ts` + baseline PNGs for `/login`.
+- The scratch `probe.spec.ts` was deleted once its finding was folded into the real spec.
+- `apps/web/tsconfig.json` needed no change — its `include` is `src/**`, so the Playwright files are already outside `pnpm typecheck`. The implementer verified them separately with a strict `tsc` run (0 errors), which found and fixed a real `TS4111` in `playwright.config.ts` (`process.env["CI"]` — the bracket-access rule again).
+
+Two of the brief's own a11y checks were **defective** and were corrected:
+
+- The **print check** set `data-theme="dark"` via `setAttribute` *before* `page.goto()`, and the navigation discards it — so the dark theme was never actually active and the check could pass vacuously. It now emulates `colorScheme: "dark"` and asserts the theme is applied before checking the printed colours.
+- The **forced-colors check** looked for `header, nav, table, fieldset`, none of which the login page renders, so it failed on "element not found" rather than on a real accessibility problem. It now walks all elements for a visible border that follows the system text colour — strictly stronger than the original. Chromium resolves `canvastext` to `rgb(0,0,0)`, which the check accounts for.
+
+### Correction — the deep-link 404 is a DEV-ONLY quirk, not a production bug
+
+The implementer reported that `page.goto("/login")` 404s under `pnpm dev`, and noted "likely the same 404 in production — needs a deploy-config fix". **I checked this against the live site and the production half of that claim is wrong.** `https://mark-matrix-web.pages.dev/login` serves the Mark-Matrix sign-in application, not a 404.
+
+The reason: `apps/web/vite.config.ts` uses `@cloudflare/vite-plugin`, and `apps/web/wrangler.jsonc` sets `pages_build_output_dir: "./dist"` — the build emits a **Worker with an assets binding** (`dist/wrangler.json` is present), and that worker serves `index.html` for client routes. `dist/` has no `_redirects` file, but it does not need one: the Pages `_redirects` mechanism is for the classic static-asset deployment, which this is not. Only the **dev** server 404s, because `vite dev` runs the Worker in a mode without the SPA fallback.
+
+So no deploy-config fix is needed. The `gotoSpa` helper is a dev-environment workaround, and that is all it is.
+
+### Known gaps in the Playwright work
+
+- The baselines are `-chromium-win32`; CI runs `ubuntu-latest`, so **Linux baselines must be generated before CI can run these specs**. The CI workflow was not touched (the plan does not ask for it).
+- The `PAGES` list covers `/login` only. Every other page needs an authenticated session, and this repo has no auth fixture, no seeded test user, and no mocked Supabase for Playwright. Extending the list to pages that cannot load would produce failures that say nothing about accessibility.
+- The web fonts load from Google Fonts at runtime. The visual baselines are currently stable because the captured page is the login form, but a page with web-font text would be non-deterministic unless the fonts are self-hosted or the capture waits on `document.fonts.ready`. Worth settling before more baselines are added.
+- Two orphaned diagnostic vite servers were left running on ports 5199/5200 (the sandbox blocked killing them). Port 5173 is free.
+
+## Flake fixed (commit `5c9c6ab`)
+
+`apps/web/src/tests/MarkAttendancePage.test.tsx` — "keeps Submit disabled until every student has a status" failed roughly 1 run in 3. The cause was a **synchronous** `screen.getByRole("radio", …)` racing the asynchronously loaded roster. Changed both radio lookups to `await screen.findByRole(…)`. Verified by running that file 6 consecutive times: 7/7 passing every time.
+
+## Tasks 49–51 review — 3 Important findings, fix round dispatched
+
+The reviewer confirmed the substance is sound: the axe assertion is a real assertion, the print override and the `data-theme === "dark"` guard genuinely fail when they should, the baselines are real comparisons rather than placeholders (mtimes prove the later run compared against the committed bytes), the `gotoSpa` mechanism genuinely drives React Router 6 (`popstate` → `handlePop` → the location `pushState` just set), and the Playwright specs are not collected by vitest (`apps/web/vitest.config.ts` sets `include: ["src/**…"]` and takes precedence over `vite.config.ts`).
+
+**But the gate does not currently gate.** Three Important findings, fix round dispatched to the original implementer:
+
+1. **The suite is not hermetic.** `apps/web/src/lib/supabase.ts:15` calls `createClient(url ?? "", anonKey ?? "")` at module scope and supabase-js throws `supabaseUrl is required.` for an empty URL — so the app never mounts, `#root` stays empty, and the specs time out before asserting anything. `apps/web/.env` is gitignored and absent in CI. Fix: dummy-but-valid Supabase env on the Playwright `webServer`.
+2. **The a11y guard would audit the 404 page.** `spa.ts:23` asserts only that *some* `<h1>` is visible, and `NotFoundPage`/`ForbiddenPage` also render an `<h1>` via `PageTitle`. If `/login` ever stopped matching its route, the catch-all 404 would pass the guard and the axe scan would report green on the wrong page. Fix: a page-specific element expectation.
+3. **The visual gate cannot run on CI.** Playwright sets `snapshotSuffix = process.platform`, so the expected filename on Linux is `login-light-chromium-linux.png`; the committed `-chromium-win32.png` would be reported as a *missing snapshot*, not a diff. Separately, `.github/workflows/ci.yml` has no Playwright step at all and runs `ubuntu-latest`, so the gate is invisible to CI.
+
+Minors also folded into the same round: the forced-colors check does not exercise the rule it names (Chromium replaces the *used value* of `border-color` under forced colors, so deleting the `@media (forced-colors: active)` block would leave it green — it must assert the `--color-hairline` custom property, which is not colour-adjusted); no dark-theme axe scan, despite the dark theme having its own tokens; the font-loaded assertion is partly vacuous (`check('16px "Source Serif 4"')` requests weight 400 but only 600 is declared, and `check()` returns true when no face matches); `pushState({}, …)` clobbers React Router's `{usr, key, idx}` state, so a later in-app `push` would compute `index = NaN` — harmless now, fatal for the authenticated-page specs Task 50 Step 5 adds; nothing typechecks the Playwright files (`apps/web/tsconfig.json`'s `include` is `src/**`), and a real `TS4111` in `playwright.config.ts` was caught only by a manual strict run; no `forbidOnly`/`retries` for CI.
+
+Deferred, recorded not fixed: `@axe-core/playwright@4.14.0` declares `node >= 22.12` while the repo declares `node >= 20` and CI installs Node 20 — `.npmrc` has no `engine-strict`, so the install survives with a warning, but the declared support range and the toolchain disagree.
 
 Task 48: implemented (commit f949fd5, tests: focused UnlockModal 7/7; full suite 40 files / 109 tests). Review in flight.
   Task 48: Ruling: the implementer added a `useEffect` on `open` that clears the reason when the modal closes, and kept the legacy `submitting` flag. Neither is in the plan's reference snippet. Justification: under the new `open` API the component stays mounted, so without the reset a stale reason reappears on reopen; the `submitting` flag preserves the legacy in-flight behaviour. Cost if wrong: two small deviations from the plan's snippet, both preserving existing behaviour.
