@@ -601,3 +601,87 @@ Task 29: review returned 1 Important finding — 9 × `TS4111` CSS-module dot ac
 Task 38: review returned 1 Important finding — 12 × `TS4111` CSS-module dot access in `Table.tsx` (`:106,117,128,129,130,140,141,142`) and `RosterAttendancePage.tsx` (`:110,139,155,195`); the new code does not compile. Same root cause, same fix. Task 38: fix round 1/5 — the finding is addressed by the Task 53 repo-wide bracket-access sweep, which covers both files. Two deferred minors are being fixed in the same pass because it already touches those files: the per-cell `aria-label` now includes the roll number so two students sharing a name no longer produce identical accessible names, and `TableHeaderCell` now emits `scope="col"`. Deferred minors not fixed: (a) the page imports `Table.module.css` directly to style its `<table>` root, coupling the page to another component's internal class names — a `TableRoot` export would be the durable fix; (b) the page CSS module re-implements `Badge`'s typographic treatment instead of using a design-system primitive; (c) the PATCH path and the faculty-only no-op guard are untested (`window.location.reload()` makes the PATCH awkward to assert); (d) Prettier is not applied — the reviewer reports no committed file in this repo passes `prettier --check`, so this is a repo-wide pre-existing condition, not a defect introduced here.
 
 Task 54 (NEW — not in the plan): the design system was never loaded by the running app. `apps/web/src/main.tsx` imports only the legacy `./styles.css`; `globals.css` (the only importer of `tokens.css`, `fonts.css` and `print.css`) was imported nowhere. Consequence: every `var(--…)` in all 25+ new CSS modules resolved to nothing — no colours, no spacing, no type scale, no fonts — and the dark theme had no effect even though `theme.ts` correctly sets `data-theme="dark"`. The whole redesign was inert at runtime, and no task in the plan wires it up. Ruling: import `./styles/globals.css` from `main.tsx`, AFTER `./styles.css`, so the design system's base typography and colours win the cascade over the legacy `:root`/`body` rules while the legacy file still styles the not-yet-migrated pages. Cost if wrong: the two global stylesheets coexist for the rest of the rollout; the legacy file is deleted in Task 52.
+
+## Task 58 fix round — COMPLETE (commit `bc6c1c9`)
+
+The three Important findings from the Task 58 review are fixed, plus the two sibling pages the review
+flagged as minors. No subagent was used — the user asked for this round to be done inline.
+
+### 1. The admin-role 403 regression (fixed)
+
+`RosterAttendancePage.tsx` and `RosterMarksPage.tsx` now pick the mount that matches their `role` prop —
+`/api/admin/*` for an admin session, `/api/faculty/*` for a faculty session — for the courses, students
+and enrollments reads. `MarksEntryPage.tsx` is faculty-only, so it reads the faculty mounts
+unconditionally.
+
+This was the live prod bug the task was raised for: the faculty roster pages pointed at admin-gated
+endpoints, so every faculty user got a 403 — and because the page renders "no students enrolled" on a
+failed read rather than failing, the wrong endpoint looked like empty data.
+
+### 2. The read-only boundary is now asserted (fixed)
+
+`apps/api/src/tests/faculty.roster.routes.test.ts` (new, 5 cases) pins the GET-only half of the grant
+at the HTTP layer: a faculty session gets 200 on both mounts; POST/DELETE on them are **404**; a student
+session is **403**; the admin mounts still serve an admin, still expose their write route, and still 403
+a faculty session. Before this, nothing failed if a future edit re-pointed the mount at
+`adminStudentsRoute`.
+
+### 3. The vacuous admin RLS assertion (fixed)
+
+`faculty.roster.rbac.test.ts` case 6 now reads through an **authenticated** admin client
+(`clientFor(adminEmail, …)`) instead of the service-role one. The service role bypasses RLS, so the old
+assertion passed whether or not the new policies worked.
+
+### Regression guards
+
+- `RosterAttendancePage.test.tsx` — the mock records every requested path; a new case asserts each role
+  reads its own endpoints and never the other's.
+- `faculty.roster.endpoints.test.tsx` (new) — the same mapping pinned for `RosterMarksPage` (faculty and
+  admin) and `MarksEntryPage` (faculty). 3 cases.
+
+**Mutation check run.** The admin branch of `RosterAttendancePage` was flipped to
+`ROUTES_CYCLE_2.facultyStudents` and the suite re-run: the new case failed with
+`expected [ '/api/admin/courses', …(3) ] to include '/api/admin/students'`. The assertion is sensitive to
+the mapping, not decorative. The file was restored with `git checkout` and both roster test files
+re-run green (6/6).
+
+## A pre-existing red API test found during verification (commit `f4d9afe`)
+
+`apps/api/src/tests/audit.marks.test.ts > POST /submit emits submit audit per flipped row` failed with
+409. **Not caused by this rollout** — introduced by `2278a75` (2026-10-05, an ancestor of HEAD), which
+gave the shared audit mock an `effectiveCount` defaulting to the response's row count. The `/submit`
+handler counts the course's non-draft rows *before* it flips anything and 409s when that count is
+non-zero; the precondition read therefore saw the mock's two *post*-update rows and bailed before the
+update. The fix pins the count to 0 for the marks table in that case.
+
+Found because the API suite had **never been run green in this rollout** — the ledger's recorded green
+state was the *web* suite. The API suite was last recorded as failing, pre-existing, at the line-353
+entry.
+
+## Gate state — verified by running them (2026-11-05)
+
+- `pnpm --filter @mark-matrix/web test` → **52 files / 208 tests, all passing**
+- `pnpm --filter @mark-matrix/api test` → **43 files / 187 tests passing, 8 files / 53 tests skipped**
+  (the skips are the live-DB RLS files, which need `SUPABASE_TEST_RLS=1` and live credentials)
+- `pnpm typecheck` → **0 errors** (shared, web, api)
+- `pnpm lint` → **0 errors**, 144 warnings (pre-existing)
+- `pnpm --filter @mark-matrix/web exec playwright test` → **6/6 passing**
+
+## Ship blockers — status (updated 2026-11-05)
+
+1. **The Task 58 migration has never been applied to a real database.** Still open, and now the only
+   code-level blocker left in Task 58. It gates the live prod bug above: without the migration the
+   faculty RLS policies do not exist, so the faculty roster reads stay empty even though the code is
+   correct.
+2. **The RLS tests have never run against Postgres.** They need `pnpm test:rls` with live Supabase
+   credentials. They have never been executed even once, so the policies are unproven.
+3. **CI's integration step still omits `SUPABASE_TEST_RLS=1`**, so the RLS files skip in CI.
+4. **Task 52** — deferred by the user's decision ("delete nothing yet").
+5. **The final whole-branch review** — the rollout's last gate. Not started.
+
+### Reviews still outstanding
+
+- Tasks **31, 32, 33** — implemented, review never run.
+- Task **42** — the review's Important finding was fixed in code (`ErrorState` on `assignments.error`,
+  `courses.error`, `faculty.error`, plus the `UsersPage` sweep), but the **fix round was never re-reviewed**.
+- Tasks **47 + 59** — implemented, review pending.
