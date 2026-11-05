@@ -556,6 +556,43 @@ visual gate is Windows-only; adding `-chromium-linux` baselines would let it run
    the ambiguous `/Compile/` matcher.
 4. **The `ci.yml` env-var rename.** Fixed and committed (`bb46a29`).
 
+## Tasks 44 + 45 + the Badge variants — complete (commits `0a88d5f`, `ac2cfe2`, `ce963b6`)
+
+**The inherited ResultsReviewPage had an infinite request loop** — the single worst defect found in this
+rollout. The status effect keyed on `coursesRes.data`, which is rebuilt on every render, and the effect
+set state, so it re-read every course's marks forever. Measured: **362 requests in 300 ms for 2
+courses**. Fixed by keying on a stable course-id string with the list held in a ref, so there is now
+exactly one marks read per course — pinned by a test.
+
+This is the clearest argument for the whole review loop: the code was written by an agent that reported
+its work as complete, it typechecked, and it would have shipped.
+
+Also fixed by the same agent: the `Badge.test.tsx` `fileURLToPath(import.meta.url)` failure (resolved
+from `process.cwd()` instead — `import.meta.url` is not a `file://` URL under happy-dom); the ambiguous
+`getByText(/Compile/)` matcher; and two duplicated/stale status labels on the gradesheet page.
+
+Findings recorded:
+
+- **Task 44's status column is an N+1 fetch and a derived value.** There is still no course-status
+  GET — `apps/api/src/routes/admin/marksLifecycle.ts` exposes only POST approve/lock/unlock — so the
+  column derives the most advanced status from the course's marks rows.
+- **Task 45's "Table of course-level marks" is not satisfiable as the brief describes.**
+  `ROUTES_CYCLE_2.studentGradesheetPath` does **not** accept `role: "admin"` (its signature is
+  `role: "student"`) and there is no admin gradesheet GET. The table therefore renders the compiled
+  students the page actually has. No data was invented and no endpoint was added.
+- **Task 45's Badge shows a session-local stage, not the server's gradesheet state**, because the admin
+  gradesheet route is POST-only.
+
+## Final state at this point
+
+- `pnpm --filter @mark-matrix/web test` → **51 files / 204 tests, all passing**
+- `pnpm --filter @mark-matrix/web typecheck` → **0 errors** (now includes `tsc -p tsconfig.tests.json`,
+  so the Playwright files are under the gate)
+- `pnpm --filter @mark-matrix/api typecheck` → **0 errors**
+- `pnpm lint` → **0 errors**, 143 pre-existing warnings
+- `pnpm --filter @mark-matrix/web exec playwright test` → **6/6 passing**
+- Working tree clean apart from the tracked `tsconfig.tsbuildinfo` build artefacts.
+
 Task 48: implemented (commit f949fd5, tests: focused UnlockModal 7/7; full suite 40 files / 109 tests). Review in flight.
   Task 48: Ruling: the implementer added a `useEffect` on `open` that clears the reason when the modal closes, and kept the legacy `submitting` flag. Neither is in the plan's reference snippet. Justification: under the new `open` API the component stays mounted, so without the reset a stale reason reappears on reopen; the `submitting` flag preserves the legacy in-flight behaviour. Cost if wrong: two small deviations from the plan's snippet, both preserving existing behaviour.
 
