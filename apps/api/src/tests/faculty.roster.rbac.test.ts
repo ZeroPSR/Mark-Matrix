@@ -24,6 +24,7 @@ const ROSTER_SELECT =
   "user_id, roll_number, admission_year, profiles!inner(name, role)";
 
 let admin: SupabaseClient;
+let adminClient: SupabaseClient;
 let faculty: SupabaseClient;
 let otherFaculty: SupabaseClient;
 let alice: SupabaseClient;
@@ -154,6 +155,9 @@ beforeAll(async () => {
   faculty = await clientFor(facultyEmail, "TestPass!1");
   otherFaculty = await clientFor(otherFacultyEmail, "TestPass!1");
   alice = await clientFor(aliceEmail, "TestPass!1");
+  // An *authenticated* admin client. The service-role `admin` client bypasses
+  // RLS entirely, so it cannot prove the policies leave admins unaffected.
+  adminClient = await clientFor(adminEmail, "TestPass!1");
 });
 
 afterAll(async () => {
@@ -227,7 +231,11 @@ describe("RLS: faculty roster read", () => {
   });
 
   itIf("6. admin is unaffected — sees every student", async () => {
-    const { data, error } = await admin.from("student_profiles").select(ROSTER_SELECT);
+    // The authenticated admin client, not the service-role one: the service
+    // role bypasses RLS, so reading through it would pass whether or not the
+    // new policies work. This assertion goes through the admin's real
+    // RLS-scoped path (`student_profiles_admin_all` → `public.is_admin()`).
+    const { data, error } = await adminClient.from("student_profiles").select(ROSTER_SELECT);
     expect(error).toBeNull();
     const ids = (data ?? []).map((r) => (r as { user_id: string }).user_id);
     expect(ids).toContain(aliceUserId);

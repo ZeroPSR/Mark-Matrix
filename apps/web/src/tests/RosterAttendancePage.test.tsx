@@ -1,11 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { RosterAttendancePage } from "../pages/faculty/RosterAttendancePage.js";
 
+// The roster page serves both roles, and each role reads from its own
+// endpoint. Recording the requested paths is what lets a test pin that
+// mapping — mocking one URL for both roles would hide a mismatch, which is
+// exactly how an admin session once ended up pointed at a faculty-gated
+// route.
+const requestedPaths = vi.hoisted(() => [] as string[]);
+
 vi.mock("../lib/api.js", () => ({
   apiFetch: vi.fn().mockImplementation((path: string) => {
-    if (path === "/api/faculty/courses") {
+    requestedPaths.push(path);
+    if (path === "/api/faculty/courses" || path === "/api/admin/courses") {
       return Promise.resolve({
         data: [
           {
@@ -17,7 +25,7 @@ vi.mock("../lib/api.js", () => ({
         ],
       });
     }
-    if (path === "/api/faculty/students") {
+    if (path === "/api/faculty/students" || path === "/api/admin/students") {
       return Promise.resolve({
         data: [
           { userId: "u1", name: "Asha Rao", rollNumber: "21" },
@@ -45,6 +53,10 @@ vi.mock("../lib/api.js", () => ({
     return Promise.resolve({ data: [] });
   }),
 }));
+
+beforeEach(() => {
+  requestedPaths.length = 0;
+});
 
 function renderRoster(role: "faculty" | "admin"): void {
   render(
@@ -102,5 +114,22 @@ describe("RosterAttendancePage", () => {
     expect(screen.getByText("present")).toBeInTheDocument();
     expect(screen.getByText("absent")).toBeInTheDocument();
     expect(screen.getByText("late")).toBeInTheDocument();
+  });
+
+  it("reads the roster from the endpoint that matches its role", async () => {
+    renderRoster("faculty");
+    await screen.findByText("Asha Rao");
+    expect(requestedPaths).toContain("/api/faculty/students");
+    expect(requestedPaths).toContain("/api/faculty/courses");
+    expect(requestedPaths).not.toContain("/api/admin/students");
+    expect(requestedPaths).not.toContain("/api/admin/courses");
+
+    requestedPaths.length = 0;
+    renderRoster("admin");
+    await screen.findByText("Asha Rao");
+    expect(requestedPaths).toContain("/api/admin/students");
+    expect(requestedPaths).toContain("/api/admin/courses");
+    expect(requestedPaths).not.toContain("/api/faculty/students");
+    expect(requestedPaths).not.toContain("/api/faculty/courses");
   });
 });

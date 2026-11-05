@@ -32,16 +32,22 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId ?? "";
 
-  const courses = useResource<{ data: Course[] }>(ROUTES_CYCLE_2.facultyCourses);
+  const courses = useResource<{ data: Course[] }>(
+    role === "admin" ? ROUTES_CYCLE_2.adminCourses : ROUTES_CYCLE_2.facultyCourses,
+  );
   const course = useMemo(
     () => (courses.data?.data ?? []).find((c) => c.id === courseId) ?? null,
     [courses.data, courseId],
   );
 
   const enrollments = useResource<{ data: Enrollment[] }>(
-    course ? `${ROUTES_CYCLE_2.adminEnrollments}?semId=${course.semester.id}` : null,
+    course
+      ? `${role === "admin" ? ROUTES_CYCLE_2.adminEnrollments : ROUTES_CYCLE_2.facultyEnrollments}?semId=${course.semester.id}`
+      : null,
   );
-  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.adminStudents);
+  const students = useResource<{ data: StudentSat[] }>(
+    role === "admin" ? ROUTES_CYCLE_2.adminStudents : ROUTES_CYCLE_2.facultyStudents,
+  );
 
   const studentById = useMemo(() => {
     const m = new Map<string, StudentSat>();

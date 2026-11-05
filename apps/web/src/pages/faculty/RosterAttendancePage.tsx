@@ -42,13 +42,17 @@ const STATUS_OPTIONS: SelectOption[] = [
 export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.Element {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId ?? "";
-  const courses = useResource<{ data: Course[] }>(ROUTES_CYCLE_2.facultyCourses);
+  const courses = useResource<{ data: Course[] }>(
+    role === "admin" ? ROUTES_CYCLE_2.adminCourses : ROUTES_CYCLE_2.facultyCourses,
+  );
   const course = useMemo(
     () => (courses.data?.data ?? []).find((c) => c.id === courseId) ?? null,
     [courses.data, courseId],
   );
 
-  const students = useResource<{ data: StudentSat[] }>(ROUTES_CYCLE_2.facultyStudents);
+  const students = useResource<{ data: StudentSat[] }>(
+    role === "admin" ? ROUTES_CYCLE_2.adminStudents : ROUTES_CYCLE_2.facultyStudents,
+  );
 
   const path = course
     ? ROUTES_CYCLE_2[`${role}Attendance`](role, course.semester.batchId, course.semester.programId, course.semester.id, course.id)
