@@ -729,7 +729,8 @@ resolve. Its assertions never print the values.
    (the permission classifier refuses a live-database run from an unattended session).
 3. **CI's integration step still omits `SUPABASE_TEST_RLS=1`**, so the RLS files skip in CI. One-line
    change, but it should land *after* step 2 passes.
-4. **Task 52** — deferred by the user's decision ("delete nothing yet").
+4. ~~**Task 52** — deferred by the user's decision ("delete nothing yet").~~ — **DONE** (commit `a95981b`),
+   re-opened and executed at the user's instruction.
 5. **The final whole-branch review** — the rollout's last gate. Not started.
 
 ## Task 52 re-opened + three reviews dispatched (2026-11-05)
@@ -776,3 +777,123 @@ Constraints say so explicitly and every task commit in this rollout follows it. 
 last five commits (`f4d9afe`..`a6d7dbf`) carry the line because the session's standing attribution rule
 takes precedence over the plan for commits *I* create; that divergence is deliberate, not an oversight,
 and it is recorded here so the final whole-branch review can decide whether to normalise it.
+
+## The three agents reported (2026-11-05)
+
+### Reviews of Tasks 31, 32, 33 — all clean
+
+Agent A's verdicts: **Task 31 ✅ spec / Approved, Task 32 ✅ spec / Approved, Task 33 ✅ spec / Approved** —
+0 Critical, 0 Important, 9 Minor across the three. Full review in `task-31-33-review.md`.
+
+Task 31: complete (commit `d62010f`, review clean — 4 Minor deferred)
+Task 32: complete (commit `9823bfc`, review clean — 3 Minor deferred)
+Task 33: complete (commit `ba8ed44`, review clean — 2 Minor deferred)
+
+Task 31 minor (deferred): `LoginPage.tsx:21-22` — `await signIn(...)` is unguarded, so a rejecting
+promise leaves the submit button permanently disabled (pre-existing, disclosed).
+Task 31 minor (deferred): `LoginPage.tsx:44` — the sign-in failure is attached to the password `Field`,
+so it reads as a password problem rather than an auth failure (plan-mandated).
+Task 31 minor (deferred): `LoginPage.module.css:3` — `min-height: 100vh` rather than `100dvh`.
+Task 31 minor (deferred): `LoginPage.test.tsx` — no case covers a rejecting `signIn`.
+Task 32 minor (deferred): `DashboardPlaceholder.tsx:8` — a raw UUID is the page `<h1>`; the original showed
+it as `<code>` body text and the mono family is now unused.
+Task 32 minor (deferred): `DashboardPlaceholder.tsx:13` — "signed in as a admin" is ungrammatical
+(plan-mandated).
+Task 32 minor (deferred): `DashboardPlaceholder.tsx:8-15` — the `userId === null` / `role === null`
+branches are unreachable (AppShell short-circuits), so 2 of the 3 new tests assert impossible states.
+Task 33 minor (deferred): `NotFoundPage.tsx:6` / `ForbiddenPage.tsx:6` — both routes sit outside the
+AppShell and so have no `main` landmark, while `/login` does (plan-mandated `<article>`).
+Task 33 minor (deferred): `NotFoundPage.test.tsx:74-82` — the ForbiddenPage suite lives in
+`NotFoundPage.test.tsx`, so `pnpm --filter @mark-matrix/web test ForbiddenPage` matches no file.
+
+### The two ⚠️ items the reviewer raised — resolved by the controller
+
+1. **"No controller ruling is recorded for the Task 31 / Task 32 deviations."** The rulings *are* recorded
+   — in this ledger, which is where rulings live — at the "Tasks still to implement" section: Task 31's
+   (`signIn` returns `{error}` and does not throw, so the plan's try/catch snippet is wrong) and Task 32's
+   (`AuthContext` exposes `userId` and `role` only — there is no `user`). The ledger also records that
+   both were carried into Batch A's dispatch. The reviewer was pointed at the briefs and
+   `implementer-context.md` but not at the ledger, so it could not see them. **Process fix for the
+   remaining dispatches: hand reviewers the ledger path as well**, or copy the applicable rulings into
+   the brief. The code judgement stands either way.
+2. **"The report's test evidence is a summary block, so the pristine-output claim is not checkable."**
+   Verified independently by the controller: `vitest run src/tests/LoginPage.test.tsx
+   src/tests/DashboardPlaceholder.test.tsx src/tests/NotFoundPage.test.tsx` → **3 files / 10 tests
+   passing, no warnings, no `act()` output, no stderr noise**. The claim holds.
+
+### Task 42 — the fix round is verified, but the review found a NEW Important finding
+
+All five fix-round items are **ADDRESSED**: the three resource errors surfaced, the `UsersPage` sweep
+landed, the two selects are gated on loading, the three mutation contracts are asserted, and each row's
+Remove button has a unique accessible name. The review's Spec verdict is ❌ on one new Important finding:
+
+**Task 42 Important:** `AssignmentsPage.tsx:86,109` — the course cell is built as
+`` `${c.code} — ${c.title}` `` and the whole string is rendered with `mono: true`, so the course *title*
+is set in IBM Plex Mono. The brief asks for the course *code* mono; the rollout reserves mono for
+numerals/IDs. The new test now pins the defect in place. Controller-verified against the source.
+
+Task 42: fix round 1/5 (5 addressed, 1 open — mono course title; commits `ad5c08c`..pending)
+
+Task 42 minor (deferred): the success Banner is unreachable behind `location.reload()`; the mutation-error
+"Retry" button only dismisses; the two selects have no visible labels; the `MemoryRouter` wrapper adds
+router warnings to the test output; `page` is not clamped to `totalPages`.
+
+### Task 47 — one Important finding, and it is a live production bug
+
+Task 47 Spec ✅ (one ⚠️: the query-string `useMemo` is elided in the diff; equivalent either way — the
+API defaults `pageSize=50`), but Task quality **Needs fixes**:
+
+**Task 47 Important:** `AuditLogPage.tsx:188` — the CSV export uses a raw relative
+`fetch("/api/admin/audit-log/export.csv?…")` while every sibling call in the same file goes through
+`apiFetch`. `apiFetch` prefixes `VITE_API_ORIGIN` (`lib/api.ts:20,30`); the raw fetch does not, so in
+production it hits the **web** origin (`mark-matrix-web.pages.dev`) instead of the API worker. The
+response is a 404 (or the SPA fallback), `if (!res.ok) return;` swallows it, and the admin clicks
+"Export CSV" and **nothing happens, silently**. Controller-verified against the source: this is a real
+defect, not a false positive. It is a feature that was reported as done and does not work in production.
+
+Task 47: fix round 1/5 (0 addressed, 1 open — CSV export ignores VITE_API_ORIGIN)
+
+Task 47 minor (deferred): `styles["detailRow"]` is referenced but never defined; the page module
+overrides the design-system `Field` margin; `compile` is missing from the badge map; `datetime-local`
+values 400 against the API's `z.string().datetime()` (pre-existing); `.dateInput` sets the font twice;
+no test for the Empty state or the `<article>` root; the badge is asserted via a CSS class name; the page
+imports the design system's Table CSS module.
+
+### Task 59 — clean
+
+Task 59: complete (commit `78f7f76`, review clean — 3 Minor deferred)
+
+Task 59 minor (deferred): the article assertion uses `container.querySelector("article")`, so it does not
+pin the *root* element; the eyebrow is not asserted; an unused `export default` was added.
+
+### Task 52 — implemented, verified by the controller, review pending
+
+Task 52: implemented (commit `a95981b`, tests: web 52 files / 208 tests; typecheck 0; lint 0 errors)
+
+The agent reported: `main.tsx` loses `import "./styles.css"` (keeping `import "./styles/globals.css"`); the
+two comments in `shell/AppShell.module.css` and `styles/loading.module.css` no longer name the deleted
+path; `styles.css` (134 lines), `admin/UsersPlaceholder.tsx` and `faculty/FacultyPlaceholder.tsx` are
+removed; the built CSS bundle still carries `--color-paper` / `--color-ink` in light, dark and print, with
+zero legacy global selectors left.
+
+**Controller verification (not taken on the agent's word):** no `styles.css` reference remains anywhere in
+`apps/web/src`; the three target files are gone; `apps/web/src/pages/student/StudentPlaceholder.tsx` (the
+live Task 59 file) is intact; the `styles/` directory still holds `tokens.css`, `globals.css`,
+`fonts.css`, `print.css`, `loading.module.css`, `theme.ts`, `tokens.ts` and their tests; the web suite
+is 52 files / 208 tests; typecheck 0 errors; lint 0 errors / 144 pre-existing warnings.
+
+### Ruling — the duplicated `<h1>` on shell-hosted pages
+
+The reviewer of Task 32 flagged this as a rollout-wide item, not a task defect, and it is **plan-mandated
+on both sides**: the plan's Task 21 reference renders `<h1>` inside `PageTitle` and its Task 22 reference
+renders `<h1>` for the Header wordmark. So every page hosted inside the `AppShell` carries two level-1
+headings.
+
+The **spec** resolves it, and the spec is the binding authority: §6 says `PageTitle` is "Source Serif 4
+**H1**", while §6's `Header` entry says only "Wordmark left in Source Serif 4 weight 600" and assigns it
+no heading level. One page has one main heading, and it is the page title.
+
+**Ruling: the Header wordmark becomes a `<p>`, not an `<h1>`.** The `brand` CSS class is untouched, so
+there is no visual change — only the accessibility tree. Cost if wrong: a screen-reader user no longer
+meets the site name as a heading. That is a small loss, because the wordmark is identical on every page
+and a repeated level-1 heading is noise rather than navigation.
