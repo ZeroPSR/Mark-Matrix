@@ -1,24 +1,43 @@
+// apps/web/src/pages/admin/GradesheetAdminPage.tsx
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiFetch } from "../../lib/api.js";
-import { ROUTES_CYCLE_2 } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type GradesheetStatus } from "@mark-matrix/shared";
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+import { Badge } from "../../components/Badge/Badge.js";
+import { Button } from "../../components/Button/Button.js";
+import { Table, type TableColumn } from "../../components/Table/Table.js";
+import { Empty } from "../../components/Empty/Empty.js";
+import { Banner } from "../../components/Banner/Banner.js";
 import { UnlockModal } from "./components/UnlockModal.js";
 import { DownloadTranscriptButton } from "../../components/DownloadTranscriptButton.js";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface Gradesheet {
-  id: string;
-  studentId: string;
-  status: "draft" | "compiled" | "locked" | "published";
-  sgpa: number | null;
-  courseCount: number | null;
-  totalCredits: number | null;
-}
+import styles from "./GradesheetAdminPage.module.css";
 
 interface CompileResponse {
   compiled: number;
   incompleteCourses: { courseId: string; courseCode: string }[];
   students: { studentId: string; sgpa: number; courseCount: number; totalCredits: number }[];
+}
+
+/**
+ * What each lifecycle stage means on this page. The admin gradesheet route
+ * exposes only its actions — compile, lock, publish, unlock — and no read of
+ * the semester's gradesheet, so the stage shown is the one reached in this
+ * session, and the note says so.
+ */
+const STAGE_NOTE: Record<GradesheetStatus, string> = {
+  draft: "Not compiled in this session yet.",
+  compiled: "Compiled in this session.",
+  locked: "Locked in this session.",
+  published: "Published in this session.",
+};
+
+interface Row extends Record<string, unknown> {
+  studentId: string;
+  sgpa: string;
+  courseCount: number;
+  totalCredits: number;
+  transcript: JSX.Element;
 }
 
 export function GradesheetAdminPage(): JSX.Element {
@@ -28,13 +47,20 @@ export function GradesheetAdminPage(): JSX.Element {
     ROUTES_CYCLE_2.adminSemGradesheetAction("admin", batchId, programId, semId, action);
 
   const [busy, setBusy] = useState<boolean>(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const [result, setResult] = useState<CompileResponse | null>(null);
   const [showUnlock, setShowUnlock] = useState<boolean>(false);
+  /**
+   * The lifecycle stage this page has reached. The admin API exposes the
+   * gradesheet only through its actions, so the stage follows the last
+   * successful one: compile → compiled, lock → locked, publish → published,
+   * unlock → compiled (an unlocked gradesheet is compiled again).
+   */
+  const [status, setStatus] = useState<GradesheetStatus>("draft");
 
   const post = async (action: "compile" | "lock" | "publish", body: unknown): Promise<void> => {
     setBusy(true);
-    setMessage(null);
+    setNotice(null);
     try {
       const res = await apiFetch<CompileResponse | { compiled?: number; locked?: number; published?: number }>(
         url(action),
@@ -42,55 +68,97 @@ export function GradesheetAdminPage(): JSX.Element {
       );
       if (action === "compile") {
         setResult(res as CompileResponse);
-        setMessage(`Compiled ${(res as CompileResponse).compiled} students.`);
+        setNotice({ text: `Compiled ${(res as CompileResponse).compiled} students.`, tone: "success" });
+        setStatus("compiled");
       } else if (action === "lock") {
-        setMessage(`Locked ${(res as { locked: number }).locked} gradesheets.`);
+        setNotice({ text: `Locked ${(res as { locked: number }).locked} gradesheets.`, tone: "success" });
+        setStatus("locked");
       } else {
-        setMessage(`Published ${(res as { published: number }).published} gradesheets.`);
+        setNotice({ text: `Published ${(res as { published: number }).published} gradesheets.`, tone: "success" });
+        setStatus("published");
       }
     } catch (e) {
       const body = (e as { body?: { error?: string; incompleteCourses?: { courseCode: string }[]; detail?: string } }).body;
       if (body?.error === "incomplete_sem" && body.incompleteCourses) {
-        setMessage(`Incomplete: ${body.incompleteCourses.map((c) => c.courseCode).join(", ")}`);
+        setNotice({ text: `Incomplete: ${body.incompleteCourses.map((c) => c.courseCode).join(", ")}`, tone: "error" });
       } else {
-        setMessage(body?.detail ?? `${action}_failed`);
+        setNotice({ text: body?.detail ?? `${action}_failed`, tone: "error" });
       }
     } finally {
       setBusy(false);
     }
   };
 
+  const students = result?.students ?? [];
+  const rows: Row[] = students.map((s) => ({
+    studentId: s.studentId,
+    sgpa: s.sgpa.toFixed(2),
+    courseCount: s.courseCount,
+    totalCredits: s.totalCredits,
+    transcript: (
+      <DownloadTranscriptButton
+        url={ROUTES_CYCLE_2.studentTranscript("admin", batchId, programId, semId, s.studentId)}
+        label="Download"
+      />
+    ),
+  }));
+
+  const columns: TableColumn<Row>[] = [
+    { key: "studentId", header: "Student" },
+    { key: "sgpa", header: "SGPA", align: "right", mono: true },
+    { key: "courseCount", header: "Courses", align: "right", mono: true },
+    { key: "totalCredits", header: "Credits", align: "right", mono: true },
+    { key: "transcript", header: "Transcript" },
+  ];
+
   return (
-    <main className="gradesheet-admin">
-      <h1>Gradesheet — Semester {semId}</h1>
-      {message !== null && <p className="gradesheet-admin__msg">{message}</p>}
-      <div className="gradesheet-admin__actions">
-        <button disabled={busy} onClick={() => void post("compile", {})}>1. Compile</button>
-        <button disabled={busy} onClick={() => void post("lock", {})}>2. Lock</button>
-        <button disabled={busy} onClick={() => void post("publish", {})}>3. Publish</button>
-        <button disabled={busy} onClick={() => setShowUnlock(true)}>Unlock</button>
+    <main className={styles["page"]}>
+      <PageTitle
+        eyebrow="Admin · Gradesheet"
+        subtitle="Compile the semester's gradesheets, then lock and publish them."
+      >
+        Gradesheet — Semester {semId}
+      </PageTitle>
+
+      <div className={styles["row"]}>
+        <Badge variant={status}>{status}</Badge>
+        <span className={styles["note"]}>{STAGE_NOTE[status]}</span>
       </div>
-      {result !== null && (
-        <table className="gradesheet-admin__students">
-          <thead><tr><th>Student</th><th>SGPA</th><th>Courses</th><th>Credits</th><th>Transcript</th></tr></thead>
-          <tbody>
-            {result.students.map((s) => (
-              <tr key={s.studentId}>
-                <td>{s.studentId}</td>
-                <td>{s.sgpa.toFixed(2)}</td>
-                <td>{s.courseCount}</td>
-                <td>{s.totalCredits}</td>
-                <td>
-                  <DownloadTranscriptButton
-                    url={ROUTES_CYCLE_2.studentTranscript("admin", batchId, programId, semId, s.studentId)}
-                    label="Download"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      <dl className={styles["meta"]}>
+        <dt>Batch</dt>            <dd>{batchId}</dd>
+        <dt>Program</dt>          <dd>{programId}</dd>
+        <dt>Semester</dt>         <dd>{semId}</dd>
+        <dt>Students compiled</dt><dd>{result !== null ? result.compiled : "—"}</dd>
+      </dl>
+
+      {notice !== null && <Banner variant={notice.tone}>{notice.text}</Banner>}
+
+      <div className={styles["actions"]}>
+        <Button variant="primary" disabled={busy} onClick={() => void post("compile", {})}>
+          1. Compile
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => void post("lock", {})}>
+          2. Lock
+        </Button>
+        <Button variant="secondary" disabled={busy} onClick={() => void post("publish", {})}>
+          3. Publish
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => setShowUnlock(true)}>
+          Unlock
+        </Button>
+      </div>
+
+      {result === null ? (
+        <Empty>Compile the semester to build its gradesheets.</Empty>
+      ) : (
+        <Table<Row>
+          columns={columns}
+          rows={rows}
+          emptyMessage="No students were compiled for this semester."
+        />
       )}
+
       <UnlockModal
         open={showUnlock}
         onClose={() => setShowUnlock(false)}
@@ -99,10 +167,14 @@ export function GradesheetAdminPage(): JSX.Element {
           setBusy(true);
           try {
             await apiFetch(url("unlock"), { method: "POST", body: JSON.stringify({ reason }) });
-            setMessage("Unlocked. You can re-compile and re-publish.");
+            setNotice({ text: "Unlocked. You can re-compile and re-publish.", tone: "success" });
+            setStatus("compiled");
             setShowUnlock(false);
           } catch (e) {
-            setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
+            setNotice({
+              text: (e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed",
+              tone: "error",
+            });
           } finally {
             setBusy(false);
           }
@@ -111,3 +183,5 @@ export function GradesheetAdminPage(): JSX.Element {
     </main>
   );
 }
+
+export default GradesheetAdminPage;
