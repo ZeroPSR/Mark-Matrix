@@ -473,6 +473,89 @@ would silently become faculty-readable — noted, not changed.
 service key but **not** `SUPABASE_TEST_RLS`, so `pnpm test:rls` must be run against a live database
 before this change lands. The migration was written but **not applied** for the same reason.
 
+## Tasks 47 + 59 — implemented (commits `a4d407c`, `78f7f76`), review pending
+
+Task 47 (AuditLogPage) — the last page in the rollout. `PageTitle` + a filter bar (`Field`/`Select` for
+actor, entity and action; native `datetime-local` inputs for the date range) + a `Table` built from the
+lower-level exports (the high-level `Table` cannot express the expandable detail row) + `Pagination`
+driven by the fetched `total`. The expandable row became a valid sibling `<tr>` with one `colSpan` cell
+carrying the old/new JSON payloads, instead of the legacy nested `<tr>`-in-`<tr>`. The action → Badge
+mapping is one exported record with a neutral fallback, as briefed.
+
+Task 59 (StudentPlaceholder) — the routed page the plan never covered. `PageTitle` with the existing
+copy, `<article>` root, no CSS module.
+
+Two **transport changes** the implementer made, both deviations from a byte-for-byte copy of the legacy
+code and both worth recording:
+
+1. **The two JSON calls now use `apiFetch` instead of raw `fetch`.** The legacy raw `fetch` sent **no
+   `Authorization` header**, so the admin audit-log API — which sits behind `supabaseAuth` — could never
+   have served this page. The legacy page was therefore broken against the real API, and `apiFetch` is
+   the house pattern that attaches the bearer token. Path and query string are identical.
+2. **The CSV export stays on `fetch`** (it needs the blob; `apiFetch` parses JSON) **but now sends the
+   session token**, following the existing `DownloadTranscriptButton` pattern. Endpoint, params, filename
+   and download mechanics are unchanged.
+
+Other findings recorded:
+
+- **The actor filter narrowed.** It is now a pick-from-list `Select` per the brief's "actor Select", so
+  filtering by a user id that is not in the `/api/admin/users` list is no longer possible. The user-list
+  fetch is unchanged and still non-fatal, and the selected id is kept in the option list so a selection
+  never silently disappears. This is a behavioural narrowing the brief asked for.
+- **The date filter values remain `datetime-local` strings** (`2026-10-05T10:00`), which the API's
+  `z.string().datetime()` may reject. Pre-existing, left unchanged because changing it would alter the
+  request parameter.
+- **`compile` renders as a neutral chip.** It is offered in the action filter (legacy parity) but is not
+  in the badge map. The shared `Badge` does have a `compiled` variant, so the mapping could be extended.
+- Filters still apply live (legacy data flow); the Apply button only resets to page 1.
+
+Task 59's brief was written after the fact (`task-59-brief.md` in this workspace) because the task was
+not in the plan — the dispatch carried the requirements inline.
+
+## Tasks 49–51 fix round — complete (commit `bb46a29`)
+
+The killed agents could not be resumed (the harness treats a user-killed agent as cancelled), so two
+fresh agents took over with the on-disk state carried forward in their briefs. Agent B's outcome:
+
+- **Playwright 6/6 passing.** vitest **51/51 files, 204/204 tests**. typecheck 0 errors. lint 0 errors.
+- **The `ci.yml` env-var rename is reverted.** The pre-existing integration step is byte-identical to
+  HEAD again, so the 8 RLS test files are not silently skipped in CI.
+- **The visual baselines were compared against, not rewritten** — PNG mtimes unchanged
+  (`2026-11-04 23:36:28`) and neither PNG appears in `git status`.
+- **The CI job was corrected further:** `node-version` 20 → **22** (`@axe-core/playwright@4.14.0`
+  declares `engines: {node: ">=22.12.0"}`; pnpm only warns because `.npmrc` has no `engine-strict`,
+  but the job now runs the version the package declares), and `playwright install --with-deps chromium`
+  → `playwright install chromium` (the `--with-deps` flag is Linux-oriented; on Windows it runs
+  Playwright's `install_media_pack.ps1`, which installs the Windows Server Media Foundation feature —
+  an admin-only step that only matters for video codecs these specs do not need).
+- **`apps/web/tsconfig.tests.json` is wired in.** The web package's `typecheck` script is now
+  `tsc -b && tsc -p tsconfig.tests.json`, so the Playwright files are under the repo's typecheck gate
+  rather than a manual run.
+
+**Every review finding was re-proved empirically rather than just read** — this is the strongest
+verification in the rollout:
+- hermeticity — Vite serves the dummy `VITE_SUPABASE_*` from `webServer.env`, overriding the gitignored
+  `.env`; without it `createClient("")` throws `supabaseUrl is required.`
+- the 404-fallthrough guard — a bogus route makes the a11y tests fail
+- forced-colors — `--color-hairline` is `#E5E0D5` normally and `CanvasText` only via the media block
+- the font-weight check — `document.fonts.check('16px "Never Loaded Sans"')` returns **true**, proving
+  the old weight-400 check was vacuous
+- `tsconfig.tests.json` — an injected `TS2322` makes typecheck exit 2, then was removed
+
+Deferred, recorded not fixed: **CI's integration step still omits `SUPABASE_TEST_RLS=1`**, so the 8 RLS
+files skip in CI today (pre-existing, out of scope). **The baselines are `-chromium-win32`**, so the
+visual gate is Windows-only; adding `-chromium-linux` baselines would let it run on ubuntu runners.
+
+## Ship blockers — status
+
+1. **The Task 58 migration has never been run against a real database.** Still open. It gates the live
+   prod bug where faculty attendance pages say "no students enrolled" when the fetch actually 403'd.
+2. **Task 58's admin-role 403 regression.** Still open — the fix round was killed before writing
+   anything, and the user chose to run only agents A and B.
+3. **The 2 red test files.** Now green (204/204) — agent A fixed the `Badge.test.tsx` file-URL bug and
+   the ambiguous `/Compile/` matcher.
+4. **The `ci.yml` env-var rename.** Fixed and committed (`bb46a29`).
+
 Task 48: implemented (commit f949fd5, tests: focused UnlockModal 7/7; full suite 40 files / 109 tests). Review in flight.
   Task 48: Ruling: the implementer added a `useEffect` on `open` that clears the reason when the modal closes, and kept the legacy `submitting` flag. Neither is in the plan's reference snippet. Justification: under the new `open` API the component stays mounted, so without the reset a stale reason reappears on reopen; the `submitting` flag preserves the legacy in-flight behaviour. Cost if wrong: two small deviations from the plan's snippet, both preserving existing behaviour.
 
