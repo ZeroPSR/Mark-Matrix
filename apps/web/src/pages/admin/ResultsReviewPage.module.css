@@ -1,0 +1,13 @@
+/* apps/web/src/pages/admin/ResultsReviewPage.module.css */
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

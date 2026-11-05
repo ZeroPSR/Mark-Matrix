@@ -1,8 +1,19 @@
-import { useState } from "react";
+// apps/web/src/pages/admin/ResultsReviewPage.tsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useResource } from "../../lib/useResource.js";
 import { apiFetch } from "../../lib/api.js";
-import { ROUTES_CYCLE_2 } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type MarksRow, type MarksStatus } from "@mark-matrix/shared";
+import { PageTitle } from "../../components/PageTitle/PageTitle.js";
+import { Badge } from "../../components/Badge/Badge.js";
+import { Button } from "../../components/Button/Button.js";
+import { Modal } from "../../components/Modal/Modal.js";
+import { Table, type TableColumn } from "../../components/Table/Table.js";
+import { Loading } from "../../components/Loading/Loading.js";
+import { Empty } from "../../components/Empty/Empty.js";
+import { ErrorState } from "../../components/ErrorState/ErrorState.js";
+import { Banner } from "../../components/Banner/Banner.js";
 import { UnlockModal } from "./components/UnlockModal.js";
+import styles from "./ResultsReviewPage.module.css";
 
 interface Course {
   id: string;
@@ -10,34 +21,126 @@ interface Course {
   title: string;
   semester: { id: string; number: number; programId: string; batchId: string };
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface CourseStatus {
-  courseId: string;
-  status: "draft" | "submitted" | "approved" | "locked";
-  approvedAt: string | null;
-  lockedAt: string | null;
+
+/**
+ * The marks lifecycle, least advanced first. The record makes the order
+ * exhaustive, so a status added to the type later fails to compile here
+ * rather than silently ranking last.
+ */
+const MARKS_STATUS_RANK: Record<MarksStatus, number> = {
+  draft: 0,
+  submitted: 1,
+  approved: 2,
+  locked: 3,
+};
+
+/**
+ * The most advanced status among a course's marks rows, or null when the
+ * course has no marks rows at all — such a course has no status to show.
+ */
+function mostAdvancedStatus(statuses: readonly MarksStatus[]): MarksStatus | null {
+  let best: MarksStatus | null = null;
+  for (const status of statuses) {
+    if (best === null || MARKS_STATUS_RANK[status] > MARKS_STATUS_RANK[best]) {
+      best = status;
+    }
+  }
+  return best;
+}
+
+interface Row extends Record<string, unknown> {
+  code: string;
+  title: string;
+  semester: string;
+  /** A Badge, the pending marker, or null — which the Table renders as "—". */
+  status: JSX.Element | string | null;
+  actions: JSX.Element;
 }
 
 export function ResultsReviewPage(): JSX.Element {
-  const coursesRes = useResource<{ data: Course[] }>("/api/admin/courses");
-  const courses = coursesRes.data?.data ?? [];
+  const coursesRes = useResource<{ data: Course[] }>(ROUTES_CYCLE_2.adminCourses);
+  const courses = useMemo(() => coursesRes.data?.data ?? [], [coursesRes.data]);
 
   const [busyCourse, setBusyCourse] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [unlockTarget, setUnlockTarget] = useState<{ kind: "marks"; course: Course } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<Course | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Course | null>(null);
+  /**
+   * The derived marks status of each course. A missing key means the
+   * course's marks have not been read yet; a null value means the course has
+   * no marks rows at all.
+   */
+  const [statuses, setStatuses] = useState<Record<string, MarksStatus | null>>({});
+
+  /**
+   * The course list is rebuilt on every render, so it cannot be an effect
+   * dependency: keying the effect on it would re-read every course's marks
+   * on every render, and because each read sets state, the reads would
+   * never settle. The effect below therefore keys on the course ids and
+   * takes the list itself from a ref, which is kept up to date here.
+   */
+  const courseIds = courses.map((c) => c.id).join(",");
+  const coursesRef = useRef<Course[]>(courses);
+  useEffect(() => {
+    coursesRef.current = courses;
+  }, [courses]);
+
+  // The course-level marks status is derived, not authoritative: the admin
+  // marks lifecycle exposes only its actions (approve/lock/unlock) and no
+  // read of a course's status, so each course's marks rows are read and the
+  // most advanced status among them wins. That is one request per course.
+  useEffect(() => {
+    const list = coursesRef.current;
+    if (list.length === 0) return;
+    let cancelled = false;
+    void Promise.all(
+      list.map(async (course): Promise<readonly [string, MarksStatus | null]> => {
+        try {
+          const res = await apiFetch<{ data: MarksRow[] }>(
+            ROUTES_CYCLE_2.adminMarks(
+              "admin",
+              course.semester.batchId,
+              course.semester.programId,
+              course.semester.id,
+              course.id,
+            ),
+          );
+          return [course.id, mostAdvancedStatus((res.data ?? []).map((row) => row.status))];
+        } catch {
+          // The status is unreadable, so the course shows no status at all.
+          return [course.id, null];
+        }
+      }),
+    ).then((entries) => {
+      if (!cancelled) setStatuses(Object.fromEntries(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseIds]);
 
   const url = (course: Course, action: "approve" | "lock" | "unlock"): string =>
-    ROUTES_CYCLE_2.adminCourseMarksAction("admin", course.semester.batchId, course.semester.programId, course.semester.id, course.id, action);
+    ROUTES_CYCLE_2.adminCourseMarksAction(
+      "admin",
+      course.semester.batchId,
+      course.semester.programId,
+      course.semester.id,
+      course.id,
+      action,
+    );
 
   const approve = async (course: Course): Promise<void> => {
     setBusyCourse(course.id);
-    setMessage(null);
+    setNotice(null);
     try {
       await apiFetch(url(course, "approve"), { method: "POST", body: "{}" });
-      setMessage(`Approved ${course.code}`);
+      setNotice({ text: `Approved ${course.code}`, tone: "success" });
       window.location.reload();
     } catch (e) {
-      setMessage((e as { body?: { detail?: string } }).body?.detail ?? "approve_failed");
+      setNotice({
+        text: (e as { body?: { detail?: string } }).body?.detail ?? "approve_failed",
+        tone: "error",
+      });
     } finally {
       setBusyCourse(null);
     }
@@ -45,63 +148,144 @@ export function ResultsReviewPage(): JSX.Element {
 
   const lock = async (course: Course): Promise<void> => {
     setBusyCourse(course.id);
-    setMessage(null);
+    setNotice(null);
     try {
       await apiFetch(url(course, "lock"), { method: "POST", body: "{}" });
-      setMessage(`Locked ${course.code}`);
+      setNotice({ text: `Locked ${course.code}`, tone: "success" });
       window.location.reload();
     } catch (e) {
-      setMessage((e as { body?: { detail?: string } }).body?.detail ?? "lock_failed");
+      setNotice({
+        text: (e as { body?: { detail?: string } }).body?.detail ?? "lock_failed",
+        tone: "error",
+      });
     } finally {
       setBusyCourse(null);
     }
   };
 
+  const statusCell = (course: Course): JSX.Element | string | null => {
+    const status = statuses[course.id];
+    if (status === undefined) return "…";
+    if (status === null) return null;
+    return <Badge variant={status}>{status}</Badge>;
+  };
+
+  const rows: Row[] = courses.map((course) => ({
+    code: course.code,
+    title: course.title,
+    semester: `Sem ${course.semester.number}`,
+    status: statusCell(course),
+    actions: (
+      <div className={styles["actions"]}>
+        <Button
+          variant="primary"
+          size="sm"
+          aria-label={`Approve marks for ${course.code}`}
+          disabled={busyCourse === course.id}
+          onClick={() => setApproveTarget(course)}
+        >
+          Approve
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={`Lock marks for ${course.code}`}
+          disabled={busyCourse === course.id}
+          onClick={() => void lock(course)}
+        >
+          Lock
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Unlock marks for ${course.code}`}
+          disabled={busyCourse === course.id}
+          onClick={() => setUnlockTarget(course)}
+        >
+          Unlock
+        </Button>
+      </div>
+    ),
+  }));
+
+  const columns: TableColumn<Row>[] = [
+    { key: "code", header: "Code" },
+    { key: "title", header: "Title" },
+    { key: "semester", header: "Semester" },
+    { key: "status", header: "Status" },
+    { key: "actions", header: "Actions", align: "right" },
+  ];
+
+  const showLoading = coursesRes.loading && courses.length === 0;
+  const showError = coursesRes.error !== null && courses.length === 0;
+
   return (
-    <main className="results-review">
-      <h1>Results — Course Approvals</h1>
-      {message !== null && <p className="results-review__msg">{message}</p>}
-      {courses.length === 0 && <p>No courses yet.</p>}
-      <table className="results-review__table">
-        <thead>
-          <tr>
-            <th>Code</th><th>Title</th><th>Semester</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {courses.map((c) => (
-            <tr key={c.id}>
-              <td>{c.code}</td>
-              <td>{c.title}</td>
-              <td>Sem {c.semester.number}</td>
-              <td>
-                <button disabled={busyCourse === c.id} onClick={() => void approve(c)}>Approve</button>
-                &nbsp;
-                <button disabled={busyCourse === c.id} onClick={() => void lock(c)}>Lock</button>
-                &nbsp;
-                <button disabled={busyCourse === c.id} onClick={() => setUnlockTarget({ kind: "marks", course: c })}>Unlock</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <main className={styles["page"]}>
+      <PageTitle
+        eyebrow="Admin · Results"
+        subtitle="Approve submitted marks, then lock a course to seal its results."
+      >
+        Results — Course Approvals
+      </PageTitle>
+
+      {notice !== null && <Banner variant={notice.tone}>{notice.text}</Banner>}
+
+      {showLoading && <Loading />}
+      {showError && <ErrorState onRetry={coursesRes.refetch}>{coursesRes.error}</ErrorState>}
+      {!showLoading && !showError && courses.length === 0 && <Empty>No courses yet.</Empty>}
+      {!showLoading && !showError && courses.length > 0 && (
+        <Table<Row> columns={columns} rows={rows} emptyMessage="No courses yet." />
+      )}
+
+      <Modal
+        open={approveTarget !== null}
+        onClose={() => setApproveTarget(null)}
+        title={approveTarget !== null ? `Approve marks for ${approveTarget.code}` : "Approve marks"}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setApproveTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const target = approveTarget;
+                if (target === null) return;
+                setApproveTarget(null);
+                void approve(target);
+              }}
+            >
+              Confirm
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Every submitted mark in {approveTarget?.code ?? "this course"} moves to approved. The
+          change is recorded in the audit log.
+        </p>
+      </Modal>
+
       <UnlockModal
-        open={unlockTarget !== null && unlockTarget.kind === "marks"}
+        open={unlockTarget !== null}
         onClose={() => setUnlockTarget(null)}
-        title={unlockTarget !== null ? `Unlock marks for ${unlockTarget.course.code}` : "Unlock marks"}
+        title={unlockTarget !== null ? `Unlock marks for ${unlockTarget.code}` : "Unlock marks"}
         onConfirm={async (reason) => {
           if (unlockTarget === null) return;
-          setBusyCourse(unlockTarget.course.id);
+          setBusyCourse(unlockTarget.id);
           try {
-            await apiFetch(url(unlockTarget.course, "unlock"), {
+            await apiFetch(url(unlockTarget, "unlock"), {
               method: "POST",
               body: JSON.stringify({ reason }),
             });
-            setMessage(`Unlocked ${unlockTarget.course.code}`);
+            setNotice({ text: `Unlocked ${unlockTarget.code}`, tone: "success" });
             setUnlockTarget(null);
             window.location.reload();
           } catch (e) {
-            setMessage((e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed");
+            setNotice({
+              text: (e as { body?: { detail?: string } }).body?.detail ?? "unlock_failed",
+              tone: "error",
+            });
           } finally {
             setBusyCourse(null);
           }
@@ -110,3 +294,5 @@ export function ResultsReviewPage(): JSX.Element {
     </main>
   );
 }
+
+export default ResultsReviewPage;
