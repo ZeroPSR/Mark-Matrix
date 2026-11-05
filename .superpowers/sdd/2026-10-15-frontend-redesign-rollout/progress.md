@@ -897,3 +897,36 @@ no heading level. One page has one main heading, and it is the page title.
 there is no visual change — only the accessibility tree. Cost if wrong: a screen-reader user no longer
 meets the site name as a heading. That is a small loss, because the wordmark is identical on every page
 and a repeated level-1 heading is noise rather than navigation.
+
+## Fix round + Task 52 review dispatched (2026-11-05)
+
+The user approved a batch of two agents:
+
+| Agent | Work |
+|---|---|
+| D | **Fix** — Task 42's mono course title, Task 47's CSV-export origin, and the Header wordmark ruling. Writes `task-42-47-fix-report.md`, leaves the working tree dirty for the controller to commit. |
+| E | **Review** — Task 52, against package `review-71c0acd..a95981b.diff`. Writes `task-52-review.md`. |
+
+The three changes went to one agent because each is small, they are in disjoint files, and a single
+dispatch costs fewer turns than three. The re-review after the fix is scoped to the fix diff only.
+
+Implementation notes handed to the fixer, so it does not have to rediscover them:
+
+- **The mono fix.** `Table.module.css:21` applies the mono font-family to the whole `<td>`, so the cell
+  cannot carry `mono: true` — the column's `mono` has to come off and the code has to be a React node
+  with the mono class on a span. The house mono stack is
+  `font-family: "IBM Plex Mono", ui-monospace, monospace;` — already used in eight modules including four
+  page modules (`AcademicStructurePage.module.css:42` and others). The Remove button's `aria-label` is
+  built from the course string, so it needs a separate plain-text label once the cell becomes a node.
+- **The export fix.** The pre-migration `AuditLogPage` used a raw relative `fetch` for *everything*; the
+  migration moved the JSON calls to `apiFetch` (correctly) and left the blob export behind, because
+  `apiFetch` parses JSON. So the export never had the origin and still doesn't. The preferred shape is an
+  `apiUrl(path)` helper exported from `lib/api.ts` — the module that already owns `BASE_URL` — used by
+  both `apiFetch` and the export, so the origin lives in one place. The silent `if (!res.ok) return;` has
+  to surface the failure instead.
+- **The header fix.** `<h1>` → `<p>` on the wordmark only; the `brand` class and all styling stay, so
+  there is no visual change. A test asserting the Header renders no level-1 heading pins the ruling.
+
+Also landed while the agents run: `supabase/.gitignore` (commit `2615284`). `supabase/.temp/` holds the
+CLI's local state — the linked project ref, the pooler URL, version stamps — and it was untracked *and*
+unignored, so it appeared in every `git status` and was one `git add -A` away from being committed.
