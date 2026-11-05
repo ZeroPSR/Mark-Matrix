@@ -731,3 +731,48 @@ resolve. Its assertions never print the values.
    change, but it should land *after* step 2 passes.
 4. **Task 52** — deferred by the user's decision ("delete nothing yet").
 5. **The final whole-branch review** — the rollout's last gate. Not started.
+
+## Task 52 re-opened + three reviews dispatched (2026-11-05)
+
+**Ruling: the user's "delete nothing yet" decision on Task 52 is superseded.** The user asked for "3rd
+subagent for the task 52 completion", which is an explicit instruction to execute the deletions the
+earlier question had scoped. Task 52's scope is the legacy `apps/web/src/styles.css` **plus** the two
+dead placeholder files (`admin/UsersPlaceholder.tsx`, `faculty/FacultyPlaceholder.tsx`) — the three files
+the deferral question named. Cost if wrong: three tracked files removed that the user wanted kept;
+recoverable with `git checkout -- <path>`.
+
+Pre-flight checks I ran before dispatching (the agents were told to verify them independently):
+
+- `apps/web/src/styles.css` is imported in exactly one place — `apps/web/src/main.tsx:7`. Two CSS modules
+  mention it in a *comment* only (`shell/AppShell.module.css:3`, `styles/loading.module.css:3`).
+- Every class selector the legacy file defines (40 rules) is unreferenced from live code. The only grep
+  hit is the English word "app" inside prose in `src/tests/StudentPlaceholder.test.tsx`.
+- `UsersPlaceholder` and `FacultyPlaceholder` are referenced nowhere — **not** in `App.tsx` or any route
+  table. `student/StudentPlaceholder.tsx` is a different, live file (Task 59).
+- The pages under review (31, 32, 33, 42, 47, 59) all use CSS Modules or no classes at all, so the
+  Task 52 removal does not touch anything they depend on. The reviewers were told this so the
+  concurrent deletion does not register as a finding against their tasks.
+
+### The three dispatches
+
+| Agent | Work | Inputs |
+|---|---|---|
+| A | **Review** Tasks 31, 32, 33 | briefs `task-31/32/33-brief.md`, report `task-31-33-report.md`, packages `review-40fe041..d62010f.diff`, `review-d62010f..9823bfc.diff`, `review-9823bfc..ba8ed44.diff` |
+| B | **Review** Tasks 42, 47, 59 | briefs `task-42/47/59-brief.md`, reports `task-42-report.md` + `task-47-59-report.md`, packages `review-1aeb50c..b7404c3.diff` (42 impl), `review-640271a..ad5c08c.diff` (42 fix), `review-ae4f647..a4d407c.diff` (47), `review-a4d407c..78f7f76.diff` (59) |
+| C | **Implement** Task 52 | brief `task-52-brief.md` + the user's scope addition; writes `task-52-report.md`, leaves the working tree dirty for the controller to commit |
+
+Review packages live in `.superpowers/sdd/2026-10-15-frontend-redesign-rollout-plans/` — that is the
+directory the skill's `review-package` script writes to for this plan; the ledger and briefs live in
+`.superpowers/sdd/2026-10-15-frontend-redesign-rollout/`. Both are git-ignored scratch.
+
+Task 42's review is a **full** review, not only a scoped re-review: the earlier review's one Important
+finding was fixed in `ad5c08c` but the fix round was never re-reviewed, and the five items the fix round
+was dispatched with (the three resource errors surfaced, the `UsersPage` sweep, the two selects gated on
+loading, the three mutation contracts asserted, a unique accessible name per Remove button) are each to be
+verdicted ADDRESSED / NOT ADDRESSED — plus a fresh spec and quality pass over the whole task.
+
+**Ruling: agent commits follow the plan's convention — no `Co-Authored-By` line.** The plan's Global
+Constraints say so explicitly and every task commit in this rollout follows it. The controller's own
+last five commits (`f4d9afe`..`a6d7dbf`) carry the line because the session's standing attribution rule
+takes precedence over the plan for commits *I* create; that divergence is deliberate, not an oversight,
+and it is recorded here so the final whole-branch review can decide whether to normalise it.
