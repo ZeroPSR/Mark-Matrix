@@ -930,3 +930,43 @@ Implementation notes handed to the fixer, so it does not have to rediscover them
 Also landed while the agents run: `supabase/.gitignore` (commit `2615284`). `supabase/.temp/` holds the
 CLI's local state — the linked project ref, the pooler URL, version stamps — and it was untracked *and*
 unignored, so it appeared in every `git status` and was one `git add -A` away from being committed.
+
+## Task 52 review — clean, so Task 52 is complete (2026-11-05)
+
+Agent E's verdict: **Spec ✅ compliant** (all four brief steps plus the user-instructed scope addition of
+the two placeholder files), **Task quality Approved**, 0 Critical / 0 Important / 2 Minor. Full review in
+`task-52-review.md`.
+
+Task 52: complete (commit `a95981b`, review clean — 2 Minor deferred)
+
+The reviewer went past the diff on the risks that matter for a stylesheet deletion and confirmed each
+one: the deleted file's 29 class tokens have no live consumers; `styles.css` has zero remaining
+references anywhere under `apps/web` including `index.html` and `vite.config.ts`; `main.tsx:7` still
+imports `./styles/globals.css` and `globals.css:7-12` supersedes the deleted `:root`/`body` rules; both
+placeholder files were genuinely unreferenced; **the live `student/StudentPlaceholder.tsx` was NOT
+touched** and is still imported at `App.tsx:22`; the `styles/` directory and its seven live members
+survived; and the legacy `.app-loading` rule's replacement in `styles/loading.module.css` is
+value-faithful (`var(--space-6)` = 32px = the legacy 2rem).
+
+Task 52 minor (deferred): `apps/web/src/pages/admin/AcademicStructurePage.tsx:30` keeps a literal global
+`className="academic-page"` — no rule for `.academic-page` existed in the deleted file or anywhere else,
+so it was inert before and after. Task 41's file, not Task 52's.
+Task 52 minor (deferred): `apps/web/src/shell/AppShell.module.css:2-3` — subject/verb disagreement in the
+comment. **Fixed in commit `878540e`** — and the disagreement was *pre-existing*: the original comment
+read "Was the global `.app-shell` / `.app-shell__main` rules in the legacy apps/web/src/styles.css", and
+Task 52 only swapped the path it named. The sentence now says the module replaces those rules.
+
+### The reviewer's ⚠️ items — resolved by the controller
+
+1. **"The report's built-bundle token audit is unverifiable from the diff (`dist/` is git-ignored)."**
+   Confirmed structurally by the reviewer instead. The controller still owes the direct check — the
+   built CSS bundle must contain `--color-paper` / `--color-ink` and no legacy global selector — and will
+   run it once the fix round lands, so the build is not racing an in-flight agent.
+2. **"The report's historical claim about `styles/print.css:17` needs git history to confirm."** Confirmed:
+   `print.css:17` is the design system's own print override
+   (`body { background: #FFFFFF !important; color: #000000 !important; }`), added by `5eba0df` (Task 6,
+   "add print stylesheet that overrides theme to black-on-white"). The legacy stylesheet never owned the
+   print rule, so deleting it changed nothing about print output. Comment-only impact, as the reviewer
+   said.
+3. **"The reported typecheck/test/lint results were not re-run."** The controller ran them itself after
+   the change: web 52 files / 208 tests, typecheck 0 errors, lint 0 errors / 144 pre-existing warnings.
