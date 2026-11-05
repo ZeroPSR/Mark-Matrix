@@ -16,3 +16,33 @@
 .published { border-color: var(--color-success); color: var(--color-success); }
 .locked    { border-color: var(--color-ink); color: var(--color-ink); background: var(--color-surface-sunk); }
 .error     { border-color: var(--color-error); color: var(--color-error); }
+
+/* Marks lifecycle: draft < submitted < approved < locked.
+   "approved" is the last step before the seal, so it gets a solid ground:
+   a filled green chip reads as "progressed but not yet sealed" and cannot be
+   confused with the hollow "submitted" (blue outline) or the hollow
+   "published" (green outline). */
+.approved {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: var(--color-paper);
+}
+
+/* Gradesheet lifecycle: draft < compiled < locked < published.
+   "compiled" is a working state — the sheet exists but is not released — so
+   it is drawn as a solid ink-blue chip, distinct from the hollow green
+   "published" outline and from the black-on-cream "locked" chip. */
+.compiled {
+  border-color: var(--color-ink-blue);
+  background: var(--color-ink-blue);
+  color: var(--color-paper);
+}
+
+/* No semantic colour: a plain hairline label for arbitrary text (audit-log
+   actions, tags). Stated explicitly so it survives a change to the base
+   class, and kept off the saturated palette so it never reads as a state. */
+.neutral {
+  border-color: var(--color-hairline);
+  background: transparent;
+  color: var(--color-ink-soft);
+}
