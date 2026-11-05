@@ -1,23 +1,30 @@
 // apps/web/tests/a11y/a11y.spec.ts
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { gotoSpa } from "../helpers/spa.js";
+import { gotoSpa, setTheme, type SpaPage, type Theme } from "../helpers/spa.js";
 
-const PAGES: { name: string; path: string }[] = [
-  { name: "login", path: "/login" },
+const PAGES: SpaPage[] = [
+  { name: "login", path: "/login", expectHeading: "Mark-Matrix" },
   // Authenticated pages need a test-user fixture, which this plan does not
   // set up; they are added to this list once one exists.
 ];
 
+/** The themes the app ships. The dark theme has its own tokens, so it is
+ *  audited as well as the light one. */
+const THEMES: Theme[] = ["light", "dark"];
+
 test.describe("Accessibility — WCAG 2.1 AA", () => {
-  for (const p of PAGES) {
-    test(`${p.name} has zero AA violations`, async ({ page }) => {
-      await gotoSpa(page, p.path);
-      const results = await new AxeBuilder({ page })
-        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-        .analyze();
-      expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
-    });
+  for (const theme of THEMES) {
+    for (const p of PAGES) {
+      test(`${p.name} has zero AA violations (${theme} theme)`, async ({ page }) => {
+        await gotoSpa(page, p);
+        await setTheme(page, theme);
+        const results = await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+          .analyze();
+        expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+      });
+    }
   }
 });
 
@@ -25,41 +32,43 @@ test.describe("Accessibility — forced-colors keeps hairlines visible (Review F
   for (const p of PAGES) {
     test(`${p.name} renders borders under forced-colors`, async ({ page }) => {
       await page.emulateMedia({ forcedColors: "active" });
-      await gotoSpa(page, p.path);
-      // At least one element with a hairline border should be present, and
-      // that border should follow the system text colour.
-      //
-      // Two changes from the original brief:
-      //  * The original selector (`header, nav, table, fieldset`) matches
-      //    nothing on the login page — it renders a `<form>` card with the
-      //    hairline border — so every element is considered instead.
-      //  * Chromium resolves the `canvastext` system colour to its RGB value
-      //    in `getComputedStyle` (`rgb(0, 0, 0)`), so the border colour is
-      //    compared against the computed system text colour as well as the
-      //    `canvastext` / `ButtonText` keywords.
-      const hasBorder = await page.evaluate(() => {
-        const systemText = getComputedStyle(document.body).color;
+      await gotoSpa(page, p);
+      const forced = await page.evaluate(() => {
+        // Chromium replaces the *used value* of every border colour with the
+        // system palette, so the computed border colour is `rgb(0, 0, 0)`
+        // whatever the stylesheet declares. Custom properties are not
+        // colour-adjusted, so the declaration the `@media (forced-colors:
+        // active)` block actually controls is read from the root element.
+        const hairline = getComputedStyle(document.documentElement)
+          .getPropertyValue("--color-hairline")
+          .trim();
+
+        // At least one element must still render a visible border — forced
+        // colours must not erase the hairline.
+        let hasVisibleBorder = false;
         for (const el of Array.from(document.querySelectorAll<HTMLElement>("*"))) {
           const cs = getComputedStyle(el);
           const sides = [
-            { style: cs.borderTopStyle, width: cs.borderTopWidth, color: cs.borderTopColor },
-            { style: cs.borderBottomStyle, width: cs.borderBottomWidth, color: cs.borderBottomColor },
-            { style: cs.borderLeftStyle, width: cs.borderLeftWidth, color: cs.borderLeftColor },
-            { style: cs.borderRightStyle, width: cs.borderRightWidth, color: cs.borderRightColor },
+            { style: cs.borderTopStyle, width: cs.borderTopWidth },
+            { style: cs.borderBottomStyle, width: cs.borderBottomWidth },
+            { style: cs.borderLeftStyle, width: cs.borderLeftWidth },
+            { style: cs.borderRightStyle, width: cs.borderRightWidth },
           ];
-          const visible = sides.filter((s) => s.style !== "none" && parseFloat(s.width) > 0);
-          if (visible.length === 0) continue;
-          const usesSystemText = visible.some(
-            (s) =>
-              s.color === "canvastext" ||
-              s.color === "ButtonText" ||
-              s.color === systemText,
-          );
-          if (usesSystemText) return true;
+          if (sides.some((s) => s.style !== "none" && parseFloat(s.width) > 0)) {
+            hasVisibleBorder = true;
+            break;
+          }
         }
-        return false;
+        return { hairline, hasVisibleBorder };
       });
-      expect(hasBorder).toBe(true);
+      expect(
+        forced.hairline,
+        "forced-colors must remap --color-hairline to the system text colour",
+      ).toBe("CanvasText");
+      expect(
+        forced.hasVisibleBorder,
+        "no element rendered a visible border under forced-colors",
+      ).toBe(true);
     });
   }
 });
@@ -72,7 +81,7 @@ test.describe("Print — black-on-white overrides dark theme (Review Focus 5)", 
       // directly — an attribute written before `goto()` is discarded by the
       // navigation.
       await page.emulateMedia({ media: "print", colorScheme: "dark" });
-      await gotoSpa(page, p.path);
+      await gotoSpa(page, p);
       // Guard against a vacuous pass: the print overrides are only meaningful
       // if the page really is rendering in the dark theme.
       const theme = await page.evaluate(() =>

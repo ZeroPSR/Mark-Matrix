@@ -39,3 +39,50 @@ jobs:
         env:
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+
+  playwright:
+    name: Playwright (a11y + visual)
+    # Playwright keys screenshot baselines by platform, and the baselines in
+    # the repo are the `-chromium-win32` ones. Running the visual gate on
+    # Windows is what makes CI compare against the baselines that are
+    # actually committed, instead of reporting a missing snapshot.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          # `@axe-core/playwright@4.14.0` declares `engines: {node: ">=22.12.0"}`.
+          # pnpm only warns (there is no `engine-strict` in `.npmrc`), but the
+          # job runs on the version the package declares so the install is
+          # clean rather than a warning.
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        # No `--with-deps`: that flag is Linux-oriented. On Windows it runs
+        # Playwright's `install_media_pack.ps1`, which installs the Windows
+        # Server Media Foundation feature — an admin-only, heavyweight step
+        # that only matters for H.264/AAC video codecs. These specs render
+        # HTML and take screenshots, so the browser needs nothing extra.
+        run: pnpm --filter @mark-matrix/web exec playwright install chromium
+
+      - name: Playwright tests (a11y + visual)
+        run: pnpm --filter @mark-matrix/web exec playwright test
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
