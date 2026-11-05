@@ -685,3 +685,49 @@ entry.
 - Task **42** — the review's Important finding was fixed in code (`ErrorState` on `assignments.error`,
   `courses.error`, `faculty.error`, plus the `UsersPage` sweep), but the **fix round was never re-reviewed**.
 - Tasks **47 + 59** — implemented, review pending.
+
+## The Task 58 migration is now APPLIED to the linked project (2026-11-05)
+
+`scripts/apply-migrations.ts` connects over the direct Postgres URL in `.keys/supabase.json` and tracks
+applied files in a `schema_migrations` table, so it works without the Supabase CLI. Run against the
+linked project `fgclgfkththdqviboqjt`:
+
+```
+applying 20261001000001_faculty_students_read.sql… ok
+done. 1 migration(s) applied.
+```
+
+**Exactly one migration was pending** — the Task 58 file. Every other migration in the directory was
+already recorded as applied, so the `audit_log` DDL was *not* replayed and no earlier migration was
+re-run. The faculty RLS policies (`student_profiles_faculty_select`, `profiles_faculty_select`) and the
+`public.teaches_any_student` helper now exist in the database.
+
+Ship blocker #1 is **closed**.
+
+## `pnpm test:rls` now runs with one command (commit `17418b3`)
+
+The live-database suites read `SUPABASE_TEST_URL` / `SUPABASE_TEST_SERVICE_ROLE_KEY`. CI supplies both
+from secrets; locally the same credentials live under `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` in
+the root `.env` and `apps/api/.dev.vars`. Without a fallback, `pnpm test:rls` skipped every RLS file
+unless both names were exported by hand — and **"skipped" reads exactly like "passed"** in the summary
+line, on the one check that has to pass before shipping.
+
+`apps/api/vitest.config.ts` now falls back to the local env files for those two names, and **only** when
+`SUPABASE_TEST_RLS=1`, so a plain `pnpm test` keeps skipping the live-database files exactly as before
+(43 files / 187 tests passing, 9 files / 54 tests skipped). The fallback resolves against both the
+config's own directory and the process cwd — Vitest bundles the config before running it, so the two
+can differ — and it warns loudly when the flag is set but no credentials were found.
+
+`apps/api/src/tests/liveDbEnv.test.ts` pins the opt-in: under the flag, the credentials must actually
+resolve. Its assertions never print the values.
+
+## Ship blockers — status (updated 2026-11-05, after the migration)
+
+1. ~~The Task 58 migration has never been applied~~ — **CLOSED**, applied to `fgclgfkththdqviboqjt`.
+2. **The RLS tests have never run against Postgres.** Still open. `pnpm test:rls` is now one command,
+   but it has never been executed even once, so the policies are unproven. It needs the user to run it
+   (the permission classifier refuses a live-database run from an unattended session).
+3. **CI's integration step still omits `SUPABASE_TEST_RLS=1`**, so the RLS files skip in CI. One-line
+   change, but it should land *after* step 2 passes.
+4. **Task 52** — deferred by the user's decision ("delete nothing yet").
+5. **The final whole-branch review** — the rollout's last gate. Not started.
