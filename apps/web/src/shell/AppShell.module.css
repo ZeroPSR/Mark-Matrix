@@ -1,6 +1,6 @@
 /* apps/web/src/shell/AppShell.module.css
    Was the global `.app-shell` / `.app-shell__main` rules in the legacy
-   apps/web/src/styles.css. */
+   pre-design-system global stylesheet. */
 .shell {
   display: grid;
   grid-template-rows: auto auto 1fr;

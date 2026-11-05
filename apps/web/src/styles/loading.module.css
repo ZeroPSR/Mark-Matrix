@@ -1,6 +1,6 @@
 /* apps/web/src/styles/loading.module.css
    Shared loading state for AppShell and ProtectedRoute. Was the global
-   `.app-loading` rule in the legacy apps/web/src/styles.css. */
+   `.app-loading` rule in the legacy pre-design-system global stylesheet. */
 .loading {
   padding: var(--space-6);
   text-align: center;
