@@ -78,12 +78,22 @@ describe("marks audit", () => {
 
   it("POST /submit emits submit audit per flipped row", async () => {
     const { supabase, calls } = makeAuditMockSupabase({
-      updateReturns: {
-        data: [
-          { id: "m1", course_id: "c1", student_id: "11111111-1111-1111-1111-111111111111", exam_type: "midterm", marks_obtained: 80, max_marks: 100, entered_by: "faculty-1", status: "submitted", updated_at: "2026-09-30T10:00:00Z" },
-          { id: "m2", course_id: "c1", student_id: "22222222-2222-2222-2222-222222222222", exam_type: "midterm", marks_obtained: 90, max_marks: 100, entered_by: "faculty-1", status: "submitted", updated_at: "2026-09-30T10:00:00Z" },
-        ],
-        error: null,
+      tableResponses: {
+        // The submit handler counts the course's non-draft rows *before* it
+        // flips anything, and 409s when that count is non-zero. The mock
+        // serves one response for both reads, so the count is pinned to 0:
+        // the rows below are the post-update state, and a course whose marks
+        // are all draft is what /submit expects to find. Left at the default
+        // (data.length), the precondition sees its own two rows and the
+        // handler 409s before it ever reaches the update.
+        marks: {
+          data: [
+            { id: "m1", course_id: "c1", student_id: "11111111-1111-1111-1111-111111111111", exam_type: "midterm", marks_obtained: 80, max_marks: 100, entered_by: "faculty-1", status: "submitted", updated_at: "2026-09-30T10:00:00Z" },
+            { id: "m2", course_id: "c1", student_id: "22222222-2222-2222-2222-222222222222", exam_type: "midterm", marks_obtained: 90, max_marks: 100, entered_by: "faculty-1", status: "submitted", updated_at: "2026-09-30T10:00:00Z" },
+          ],
+          error: null,
+          count: 0,
+        },
       },
     });
     const app = mountAsFaculty(supabase);
