@@ -1113,3 +1113,35 @@ at the pause, and the scoped re-review of that diff is still owed.
   checked, and the classifier now blocks starting them from this session.
 - The full API suite (51 files) could not be run end-to-end from here; 17 unit files that touch the app
   and the admin routes were run instead.
+
+## Housekeeping — the rollout is pushed (2026-11-06)
+
+**The user asked for the fix to be committed, the stale branches removed, and `main` pushed.** Done, with
+the destination confirmed explicitly first.
+
+**Committed:** the paused Task 42 / 47 fix round and the Header wordmark ruling as `e358f90`; the ledger
+as `3f7e8bf`.
+
+**Removed — the four worktrees and five branches left by the crashed 2026-11-03 wave:**
+
+| Branch | Task | Equivalent in main |
+|---|---|---|
+| `task38-roster-attendance` (8a447e1) | Task 38 roster attendance | `b0d2549` |
+| `worktree-agent-a8f1894769be6313b` (6543a4a) | Task 30 student marks | `50a1e33` |
+| `worktree-agent-af23ae6a794e5f168` (888d63b) | Task 43 admin enrollments | `1aeb50c` |
+| `worktree-agent-af8c5fb933b16fa6c` (9b2cac8) | Task 48 UnlockModal | `f949fd5` |
+| `worktree-agent-ad78e827295ad7e4f` (8a447e1) | duplicate of the first | — |
+
+Nothing was stranded: every file those branches add exists in main, and the four untracked implementer
+reports they carried (`task-30`, `task-38`, `task-43`, `task-48`) are byte-identical to the copies in
+this workspace. The worktree *directories* on disk needed Windows long-path deletion — `git worktree
+remove` failed with "Filename too long" — and were cleared with `rmdir /s /q` against the `\\?\`
+prefix. `git worktree prune` then left only the main checkout registered.
+
+A fifth leftover, `.claude/worktrees/cycle-1-auth-rbac`, belongs to an earlier plan and was left alone.
+
+**Pushed:** `f7efa7c..3f7e8bf  main -> main` — the whole rollout (150 commits) is now on
+`github.com/ZeroPSR/Mark-Matrix`. Before pushing, the outgoing commits were checked for credentials:
+`.env`, `.keys/` and `.dev.vars` are gitignored, the ledger holds no secret values, and
+`docs/superpowers/deploy/2026-10-05-cycle-8c-secrets.md` is an inventory of env var *names* that states
+"No actual values are stored here". No credential file is tracked.
