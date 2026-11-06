@@ -30,7 +30,7 @@ interface FacultySat {
 }
 
 interface Row extends Record<string, unknown> {
-  courseCode: string;
+  courseCode: JSX.Element;
   facultyName: string;
   assignedDate: string;
   actions: JSX.Element;
@@ -83,19 +83,29 @@ export function AssignmentsPage(): JSX.Element {
   const rows: Row[] = pageRows.map((a) => {
     const c = courseById.get(a.courseId);
     const f = facultyById.get(a.facultyId);
-    const courseCode = c ? `${c.code} — ${c.title}` : a.courseId;
+    // The course code is an identifier, so it is set in the mono face; the
+    // title beside it is prose and keeps the body face.
+    const courseCodeText = c !== undefined ? c.code : a.courseId;
+    // The plain-text label keeps the Remove button's accessible name the
+    // same text it has always been.
+    const courseLabel = c !== undefined ? `${c.code} — ${c.title}` : a.courseId;
     const facultyName = f
       ? `${f.name}${f.employeeCode ? ` (${f.employeeCode})` : ""}`
       : a.facultyId;
     return {
-      courseCode,
+      courseCode: (
+        <>
+          <span className={styles["code"]}>{courseCodeText}</span>
+          {c !== undefined && ` — ${c.title}`}
+        </>
+      ),
       facultyName,
       assignedDate: a.assignedDate,
       actions: (
         <Button
           variant="ghost"
           size="sm"
-          aria-label={`Remove assignment for ${facultyName} in ${courseCode}`}
+          aria-label={`Remove assignment for ${facultyName} in ${courseLabel}`}
           onClick={() => void remove(a.id)}
         >
           Remove
@@ -106,7 +116,7 @@ export function AssignmentsPage(): JSX.Element {
 
   const columns: TableColumn<Row>[] = [
     { key: "facultyName", header: "Faculty" },
-    { key: "courseCode", header: "Course", align: "right", mono: true },
+    { key: "courseCode", header: "Course", align: "right" },
     { key: "assignedDate", header: "Assigned" },
     { key: "actions", header: "Actions", align: "right" },
   ];

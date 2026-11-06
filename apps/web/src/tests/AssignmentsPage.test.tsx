@@ -156,9 +156,17 @@ describe("AssignmentsPage", () => {
     expect(removeButtons).toHaveLength(2);
     expect(removeButtons[0]).toHaveAccessibleName(/Dr Smith/);
     expect(removeButtons[1]).toHaveAccessibleName(/Prof Jones/);
+    // The name still spells the course out as "code — title", exactly as it
+    // did before the course cell became a node.
+    expect(removeButtons[0]).toHaveAccessibleName(
+      "Remove assignment for Dr Smith (EMP1) in CS101 — Intro",
+    );
+    expect(removeButtons[1]).toHaveAccessibleName(
+      "Remove assignment for Prof Jones (EMP2) in CS202 — Algorithms",
+    );
   });
 
-  it("renders the course cell right-aligned and in the mono face", async () => {
+  it("renders the course cell right-aligned, with only the code in the mono face", async () => {
     mockResource(ROUTES_CYCLE_2.adminCourses, {
       data: [{ id: "cs101", code: "CS101", title: "Intro" }],
     });
@@ -173,12 +181,47 @@ describe("AssignmentsPage", () => {
 
     const table = await screen.findByRole("table");
     const cells = within(bodyRows(table)[0] as HTMLElement).getAllByRole("cell");
+    const courseCell = cells[1] as HTMLElement;
 
-    expect(hasScopedClass(cells[1] as HTMLElement, "right")).toBe(true);
-    expect(hasScopedClass(cells[1] as HTMLElement, "mono")).toBe(true);
+    expect(hasScopedClass(courseCell, "right")).toBe(true);
+    // The whole cell is no longer mono — only the code inside it is.
+    expect(hasScopedClass(courseCell, "mono")).toBe(false);
+    expect(hasScopedClass(courseCell, "code")).toBe(false);
+
+    const code = within(courseCell).getByText("CS101");
+    expect(hasScopedClass(code, "code")).toBe(true);
+    // The mono element carries the code alone.
+    expect(code).toHaveTextContent("CS101");
+    expect(code).not.toHaveTextContent("Intro");
+
+    // The title is prose: it stays in the cell's body face, outside the
+    // mono span.
+    const title = within(courseCell).getByText(/Intro/);
+    expect(hasScopedClass(title, "code")).toBe(false);
+    expect(title).toHaveTextContent("CS101 — Intro");
+
     // The faculty name is plain left-aligned body text.
     expect(hasScopedClass(cells[0] as HTMLElement, "right")).toBe(false);
     expect(hasScopedClass(cells[0] as HTMLElement, "mono")).toBe(false);
+  });
+
+  it("falls back to the raw course id when the course is not in the course map", async () => {
+    mockResource(ROUTES_CYCLE_2.adminCourses, { data: [] });
+    mockResource(ROUTES_CYCLE_2.adminFaculty, {
+      data: [{ userId: "f1", name: "Dr Smith" }],
+    });
+    mockResource(ROUTES_CYCLE_2.adminFacultyAssignments, {
+      data: [{ id: "a1", facultyId: "f1", courseId: "cs999", assignedDate: "2026-10-15" }],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    const cells = within(bodyRows(table)[0] as HTMLElement).getAllByRole("cell");
+    const courseCell = cells[1] as HTMLElement;
+
+    expect(courseCell).toHaveTextContent("cs999");
+    expect(within(courseCell).getByText("cs999")).toBeInTheDocument();
   });
 
   it("keeps the Assign button disabled until both a course and a faculty member are chosen", () => {

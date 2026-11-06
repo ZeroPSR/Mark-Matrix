@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { AuditLogListResponse, AuditLogRow } from "@mark-matrix/shared";
-import { apiFetch } from "../../lib/api.js";
+import { apiFetch, apiUrl } from "../../lib/api.js";
 import { supabase } from "../../lib/supabase.js";
 import { cn } from "../../lib/cn.js";
 import { PageTitle } from "../../components/PageTitle/PageTitle.js";
@@ -19,6 +19,7 @@ import tableStyles from "../../components/Table/Table.module.css";
 import { Pagination } from "../../components/Pagination/Pagination.js";
 import { Loading } from "../../components/Loading/Loading.js";
 import { Empty } from "../../components/Empty/Empty.js";
+import { Banner } from "../../components/Banner/Banner.js";
 import { ErrorState } from "../../components/ErrorState/ErrorState.js";
 import styles from "./AuditLogPage.module.css";
 
@@ -96,6 +97,8 @@ export function AuditLogPage(): JSX.Element {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set when the CSV export fails, so the admin sees why nothing downloaded. */
+  const [exportError, setExportError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [userMap, setUserMap] = useState<Record<string, { email: string | null; name: string }>>({});
   /** Bumped by the error state's Retry button to re-run the query. */
@@ -179,16 +182,30 @@ export function AuditLogPage(): JSX.Element {
   }, []);
 
   const onExport = useCallback(async () => {
+    setExportError(null);
     // Strip page/pageSize for the export (it returns all matching rows).
     const exportQs = buildQueryString({ userId, entity, action, from: from || undefined, to: to || undefined });
     // The export is a blob, so it cannot go through apiFetch; it still needs
-    // the session token the admin API expects.
+    // the session token the admin API expects, and it still has to be sent
+    // to the API origin — a relative path would hit the web app in
+    // production.
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token ?? "";
-    const res = await fetch(`/api/admin/audit-log/export.csv?${exportQs}`, {
-      headers: token !== "" ? { authorization: `Bearer ${token}` } : {},
-    });
-    if (!res.ok) return;
+    let res: Response;
+    try {
+      res = await fetch(apiUrl(`/api/admin/audit-log/export.csv?${exportQs}`), {
+        headers: token !== "" ? { authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // The request never reached the API; say so rather than swallow it.
+      setExportError("The export failed: the API could not be reached.");
+      return;
+    }
+    if (!res.ok) {
+      // Never fail silently: the admin has to know the export did not run.
+      setExportError(`The export failed (HTTP ${res.status}).`);
+      return;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -215,6 +232,10 @@ export function AuditLogPage(): JSX.Element {
   return (
     <article className={styles["page"]}>
       <PageTitle eyebrow="Admin · Audit log">Audit Log</PageTitle>
+
+      {exportError !== null && (
+        <Banner variant="error" title="Export failed">{exportError}</Banner>
+      )}
 
       <section className={styles["filterBar"]} role="group" aria-label="Audit log filters">
         <Field label="Actor" htmlFor="audit-actor">

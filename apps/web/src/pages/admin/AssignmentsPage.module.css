@@ -17,6 +17,14 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+/* The course code is an identifier, so it wears the mono face; the title
+   beside it is prose and keeps the body face. */
+.code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 720px) {
   .filterBar {
     grid-template-columns: 1fr;

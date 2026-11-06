@@ -31,12 +31,15 @@ describe("<App />", () => {
     // future extension.
   });
 
-  it("renders the dashboard with a Mark-Matrix heading when authenticated", () => {
+  it("renders the dashboard with a Mark-Matrix wordmark when authenticated", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("heading", { name: /mark-matrix/i })).toBeInTheDocument();
+    // The wordmark is a brand, not a heading: the dashboard's PageTitle
+    // owns the page's single level-1 heading.
+    expect(screen.getByText("Mark-Matrix")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /welcome/i })).toBeInTheDocument();
   });
 });

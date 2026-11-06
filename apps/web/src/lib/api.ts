@@ -19,6 +19,16 @@ async function getToken(): Promise<string | null> {
 
 const BASE_URL = import.meta.env["VITE_API_ORIGIN"] ?? "";
 
+/**
+ * The absolute URL for an API path. In production the web app and the API
+ * live on different hosts, so every request has to resolve its origin here
+ * — including the ones that cannot go through `apiFetch` (a blob download,
+ * say). One place owns the origin.
+ */
+export function apiUrl(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -27,7 +37,7 @@ export async function apiFetch<T>(
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json");
   if (token) headers.set("authorization", `Bearer ${token}`);
-  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
+  const res = await fetch(apiUrl(path), { ...init, headers });
   const text = await res.text();
   let body: unknown = null;
   if (text.length > 0) {

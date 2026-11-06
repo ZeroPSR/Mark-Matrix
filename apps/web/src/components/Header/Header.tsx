@@ -16,7 +16,9 @@ export interface HeaderProps {
 export function Header({ role, userName, onSignOut, onToggleTheme, currentTheme }: HeaderProps): JSX.Element {
   return (
     <header className={styles["header"]} data-print="hidden">
-      <h1 className={styles["brand"]}>Mark-Matrix</h1>
+      {/* The wordmark is a brand, not a heading: the page title owns the
+          page's single level-1 heading. */}
+      <p className={styles["brand"]}>Mark-Matrix</p>
       <Badge variant="submitted">{role}</Badge>
       <span className={styles["spacer"]} />
       <span className={styles["user"]}>{userName}</span>

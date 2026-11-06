@@ -5,7 +5,13 @@ import { AuditLogPage, ACTION_BADGE_VARIANTS } from "../pages/admin/AuditLogPage
 // vi.mock is hoisted above the imports, so the mock functions have to be
 // created with vi.hoisted to be reachable from the factory.
 const apiFetchMock = vi.hoisted(() => vi.fn());
-vi.mock("../lib/api.js", () => ({ apiFetch: apiFetchMock }));
+// The API lives on its own host in production, so the mocked `apiUrl`
+// resolves every path against that origin.
+const API_ORIGIN = vi.hoisted(() => "https://api.mark-matrix.test");
+vi.mock("../lib/api.js", () => ({
+  apiFetch: apiFetchMock,
+  apiUrl: (path: string) => `${API_ORIGIN}${path}`,
+}));
 
 // The CSV export is a blob download, so it reads the session token directly.
 vi.mock("../lib/supabase.js", () => ({
@@ -202,6 +208,48 @@ describe("AuditLogPage", () => {
     expect(exportUrl).not.toContain("page=");
     expect(exportUrl).not.toContain("pageSize=");
     expect(createObjectURL).toHaveBeenCalled();
+  });
+
+  it("requests the export against the API origin, not a relative path", async () => {
+    const createObjectURL = vi.fn(() => "blob:mock");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+    fetchSpy.mockResolvedValue({ ok: true, status: 200, blob: async () => new Blob() });
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("cell", { name: "m1" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
+
+    await waitFor(() => {
+      const urls = fetchSpy.mock.calls.map((c) => c[0] as string);
+      expect(urls.some((u) => u.includes("export.csv"))).toBe(true);
+    });
+    const exportUrl = fetchSpy.mock.calls
+      .map((c) => c[0] as string)
+      .find((u) => u.includes("export.csv")) ?? "";
+    // The web app and the API are served from different hosts in
+    // production: a relative path would hit the web origin, 404, and the
+    // admin would click "Export CSV" and see nothing happen.
+    expect(exportUrl.startsWith(API_ORIGIN)).toBe(true);
+    expect(exportUrl.startsWith("/")).toBe(false);
+  });
+
+  it("surfaces a failed export instead of silently doing nothing", async () => {
+    fetchSpy.mockResolvedValue({ ok: false, status: 500, blob: async () => new Blob() });
+
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("cell", { name: "m1" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /export csv/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/export failed/i);
+    });
+    // A failed download is not a failed query: the log stays on screen.
+    expect(screen.getByRole("cell", { name: "m1" })).toBeInTheDocument();
   });
 
   it("surfaces a failed load and retries on demand", async () => {

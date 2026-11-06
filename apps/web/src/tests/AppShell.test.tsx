@@ -22,7 +22,10 @@ describe("AppShell", () => {
   it("renders the brand and the user's role", () => {
     mockAuth({ userId: "u1", role: "admin" });
     render(<MemoryRouter><AppShell /></MemoryRouter>);
-    expect(screen.getByRole("heading", { name: /mark-matrix/i })).toBeInTheDocument();
+    // The wordmark is a brand, not a heading: the shell carries no level-1
+    // heading of its own, so the page title can be the page's only h1.
+    expect(screen.getByText("Mark-Matrix")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByText("admin")).toBeInTheDocument();
   });
 
