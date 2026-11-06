@@ -1145,3 +1145,70 @@ A fifth leftover, `.claude/worktrees/cycle-1-auth-rbac`, belongs to an earlier p
 `.env`, `.keys/` and `.dev.vars` are gitignored, the ledger holds no secret values, and
 `docs/superpowers/deploy/2026-10-05-cycle-8c-secrets.md` is an inventory of env var *names* that states
 "No actual values are stored here". No credential file is tracked.
+
+## The native dropdowns ignored the dark theme (commit `38fcf3a`)
+
+A select's **open dropdown** was still drawn in the browser's light palette in the dark theme — the closed
+control was dark, the list of options came up white.
+
+**Cause:** nothing declared `color-scheme`. Native widgets are drawn by the browser, outside the page, so
+they do not inherit the page's colours; `color-scheme` is what tells the browser which palette to draw
+them with. Declaring it per theme fixes the select popup, the `datetime-local` pickers and the
+scrollbars at once. The Select's `<option>`s are then pinned to the design system's own surface and ink
+so the list matches the page rather than the browser's idea of "dark", which is a different grey.
+
+`apps/web/src/styles/globals.test.ts` reads the stylesheet from disk and pins both declarations, so a
+theme block cannot lose them silently.
+
+## The brand mark (commit `bd59eb2`)
+
+The user added `apps/web/src/assets/MarkMatrixLogo.png` — a 1536×1024, 1.3 MB light-and-purple render
+with a transparent background. Two facts about it decided the placement:
+
+- **Its white ribbon is legible on a dark surface and nearly invisible on paper.** So it never sits
+  directly on the page; it sits on its own dark chip, in either theme.
+- **It is much wider than it is tall** (the mark is 1013×460), so a chip holding it whole is short and
+  it cannot be read at the size a header strip allows.
+
+**Where it went:** the favicon (there was **no favicon at all** before) and the sign-in card — the one
+surface with room for a brand image, and the first thing every visitor sees. The card's "Mark-Matrix"
+heading stays as text: it is the design system's voice, and the mark beside it is decorative
+(`alt=""`). The assets are cut from the original — a 64px favicon (5 KB) and a 26 KB mark, against the
+1.3 MB source — and the chip's surface is a token, `--color-brand-surface`, because it is the one colour
+the brand brings with it.
+
+**Not in the header, deliberately.** The header is the design system's voice — a serif wordmark on paper,
+hairline-ruled, 64px tall — and a glossy 3D mark cannot be read at that scale. If the mark is wanted in
+the chrome, the honest options are the full lockup on a small dark plate (~56×28, still marginal) or a
+header that carries the lockup instead of the wordmark. That is a design decision, and it is the user's.
+
+The visual baselines were regenerated for the changed sign-in card in both themes, and the a11y scan
+still reports zero AA violations.
+
+## Correction — the lint baseline was 144 warnings because stale worktrees were being linted
+
+`pnpm lint` reported **144** warnings for most of this rollout. After the four crashed-wave worktrees
+were deleted it reports **24**, and after the ESLint ignore was added (commit `8ae4cf3`) it reports
+**17**. Each worktree is a full checkout of the repo, and ESLint's ignore list covered
+`**/node_modules/**` but not `**/.claude/worktrees/**`, so the same files were linted five times over.
+**17 is the repo's real baseline**, and every "144 warnings" line in this ledger is inflated by that.
+
+A fifth leftover, `.claude/worktrees/cycle-1-auth-rbac`, is an orphan from an older plan — its git
+metadata is gone but the directory remains. The ignore rule now covers it too; the directory itself is
+still there and can be deleted whenever.
+
+## Incident — the worktree cleanup broke the install, and the fix
+
+`git worktree remove --force` failed on all four with **"Filename too long"** (Windows MAX_PATH), after
+removing git's worktree registry entries. The fallback was `rmdir /s /q` against the `\\?\` long-path
+prefix — and **`/s` recursed through pnpm's directory junctions into the main checkout**, deleting
+`node_modules/.bin` and emptying every package's `node_modules`. The build broke: `vitest` was not
+found.
+
+**Fix:** `pnpm install --frozen-lockfile` — the store (`node_modules/.pnpm`, 500 packages) and the
+lockfile were both intact, so the link trees were rebuilt from them in 1.5 s, with no downloads. All
+gates re-run green afterwards.
+
+**The lesson:** `rmdir /s` on a tree containing junctions deletes the *targets*. `git worktree remove`
+is the right tool for worktrees, and when it fails on path length the fix is `core.longpaths=true`, not
+a recursive delete.
