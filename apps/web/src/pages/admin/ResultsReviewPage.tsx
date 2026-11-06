@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useResource } from "../../lib/useResource.js";
 import { apiFetch } from "../../lib/api.js";
-import { ROUTES_CYCLE_2, type MarksRow, type MarksStatus } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type CourseListResponse, type CourseWithSemester, type MarksRow, type MarksStatus } from "@mark-matrix/shared";
 import { PageTitle } from "../../components/PageTitle/PageTitle.js";
 import { Badge } from "../../components/Badge/Badge.js";
 import { Button } from "../../components/Button/Button.js";
@@ -15,12 +15,15 @@ import { Banner } from "../../components/Banner/Banner.js";
 import { UnlockModal } from "./components/UnlockModal.js";
 import styles from "./ResultsReviewPage.module.css";
 
-interface Course {
-  id: string;
-  code: string;
-  title: string;
-  semester: { id: string; number: number; programId: string; batchId: string };
-}
+/**
+ * The course list is read from the admin's hierarchy endpoint, not the CRUD
+ * course list. The CRUD list returns a flat row with only a `semesterId`,
+ * and every URL on this page — the per-course marks read and the
+ * approve/lock/unlock actions — is built from the batch, program and
+ * semester ids. `CourseWithSemester` is the shared declaration of what the
+ * endpoint returns, so the page cannot drift from it.
+ */
+type Course = CourseWithSemester;
 
 /**
  * The marks lifecycle, least advanced first. The record makes the order
@@ -58,7 +61,7 @@ interface Row extends Record<string, unknown> {
 }
 
 export function ResultsReviewPage(): JSX.Element {
-  const coursesRes = useResource<{ data: Course[] }>(ROUTES_CYCLE_2.adminCourses);
+  const coursesRes = useResource<CourseListResponse>(ROUTES_CYCLE_2.adminCourseHierarchy);
   const courses = useMemo(() => coursesRes.data?.data ?? [], [coursesRes.data]);
 
   const [busyCourse, setBusyCourse] = useState<string | null>(null);

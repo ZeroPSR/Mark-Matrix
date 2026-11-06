@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { ROUTES_CYCLE_2 } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type CourseWithSemester } from "@mark-matrix/shared";
 import { ResultsReviewPage } from "../pages/admin/ResultsReviewPage.js";
 
 const useResourceMock = vi.fn();
@@ -25,10 +25,17 @@ const resources = new Map<string, ResourceState>();
 
 const reloadMock = vi.fn();
 
-/** The two courses the page lists. */
-const COURSES = [
-  { id: "c1", code: "CS101", title: "Intro", semester: { id: "s1", number: 1, programId: "p1", batchId: "b1" } },
-  { id: "c2", code: "CS102", title: "Data", semester: { id: "s1", number: 1, programId: "p1", batchId: "b1" } },
+/**
+ * The two courses the page lists.
+ *
+ * Typed as the shared contract, so the fixture cannot drift from what the
+ * endpoint returns — the flat CRUD course list that this page used to read
+ * has no `semester` object at all, and a hand-written fixture was what hid
+ * that.
+ */
+const COURSES: CourseWithSemester[] = [
+  { id: "c1", code: "CS101", title: "Intro", credits: 3, semester: { id: "s1", number: 1, programId: "p1", batchId: "b1" } },
+  { id: "c2", code: "CS102", title: "Data", credits: 3, semester: { id: "s1", number: 1, programId: "p1", batchId: "b1" } },
 ];
 
 /** A marks row, as the admin marks endpoint returns it. */
@@ -103,7 +110,7 @@ function renderPage(): void {
 
 describe("ResultsReviewPage", () => {
   it("renders the heading and a row per course with the approve, lock and unlock actions", () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -125,7 +132,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("derives the status of a course from its marks rows", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -135,7 +142,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("leaves a course with no marks rows without a status", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -145,7 +152,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("reads the marks of each course exactly once", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -163,7 +170,7 @@ describe("ResultsReviewPage", () => {
       if (path.endsWith("/course/c1/marks")) throw new Error("API 500");
       return { data: [] };
     });
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -173,7 +180,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("asks for confirmation before approving, and only then posts", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -200,7 +207,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("cancelling the confirmation leaves the course untouched", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -215,7 +222,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("unlocks a course with the reason the admin gives", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -237,7 +244,7 @@ describe("ResultsReviewPage", () => {
   });
 
   it("locks a course without asking for confirmation", async () => {
-    mockResource(ROUTES_CYCLE_2.adminCourses, { data: COURSES });
+    mockResource(ROUTES_CYCLE_2.adminCourseHierarchy, { data: COURSES });
 
     renderPage();
 
@@ -254,7 +261,7 @@ describe("ResultsReviewPage", () => {
 
   it("surfaces a failed load instead of an empty course list", () => {
     const refetch = vi.fn();
-    resources.set(ROUTES_CYCLE_2.adminCourses, { error: "load_failed", refetch });
+    resources.set(ROUTES_CYCLE_2.adminCourseHierarchy, { error: "load_failed", refetch });
 
     renderPage();
 

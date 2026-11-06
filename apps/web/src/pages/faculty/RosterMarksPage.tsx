@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useResource } from "../../lib/useResource.js";
-import { ROUTES_CYCLE_2, type MarksRow } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type CourseListResponse, type MarksRow } from "@mark-matrix/shared";
 import { PageTitle } from "../../components/PageTitle/PageTitle.js";
 import { Banner } from "../../components/Banner/Banner.js";
 import { Loading } from "../../components/Loading/Loading.js";
@@ -10,12 +10,6 @@ import { ErrorState } from "../../components/ErrorState/ErrorState.js";
 import { cn } from "../../lib/cn.js";
 import styles from "./RosterMarksPage.module.css";
 
-interface Course {
-  id: string;
-  code: string;
-  title: string;
-  semester: { id: string; number: number; programId: string; batchId: string };
-}
 interface Enrollment { id: string; studentId: string; semId: string }
 interface StudentSat { userId: string; name: string; rollNumber?: string }
 
@@ -32,8 +26,8 @@ export function RosterMarksPage({ role }: RosterMarksPageProps): JSX.Element {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId ?? "";
 
-  const courses = useResource<{ data: Course[] }>(
-    role === "admin" ? ROUTES_CYCLE_2.adminCourses : ROUTES_CYCLE_2.facultyCourses,
+  const courses = useResource<CourseListResponse>(
+    role === "admin" ? ROUTES_CYCLE_2.adminCourseHierarchy : ROUTES_CYCLE_2.facultyCourses,
   );
   const course = useMemo(
     () => (courses.data?.data ?? []).find((c) => c.id === courseId) ?? null,

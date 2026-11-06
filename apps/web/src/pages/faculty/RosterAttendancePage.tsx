@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useResource } from "../../lib/useResource.js";
 import { apiFetch } from "../../lib/api.js";
-import { ROUTES_CYCLE_2, type AttendanceStatus, type AttendanceRow, type AttendanceSummaryRow } from "@mark-matrix/shared";
+import { ROUTES_CYCLE_2, type AttendanceStatus, type AttendanceRow, type AttendanceSummaryRow, type CourseListResponse } from "@mark-matrix/shared";
 import { PageTitle } from "../../components/PageTitle/PageTitle.js";
 import { Banner } from "../../components/Banner/Banner.js";
 import { Empty } from "../../components/Empty/Empty.js";
@@ -20,7 +20,12 @@ import tableStyles from "../../components/Table/Table.module.css";
 import { cn } from "../../lib/cn.js";
 import styles from "./RosterAttendancePage.module.css";
 
-interface Course { id: string; code: string; title: string; semester: { id: string; number: number; programId: string; batchId: string } }
+/**
+ * A course in its semester hierarchy. Both course lists return this shape:
+ * the faculty one for a faculty session, the admin hierarchy one for an
+ * admin session. The hierarchy ids are what the attendance URLs below are
+ * built from.
+ */
 interface StudentSat { userId: string; name: string; rollNumber?: string }
 
 interface RosterAttendancePageProps {
@@ -42,8 +47,8 @@ const STATUS_OPTIONS: SelectOption[] = [
 export function RosterAttendancePage({ role }: RosterAttendancePageProps): JSX.Element {
   const params = useParams<{ courseId: string }>();
   const courseId = params.courseId ?? "";
-  const courses = useResource<{ data: Course[] }>(
-    role === "admin" ? ROUTES_CYCLE_2.adminCourses : ROUTES_CYCLE_2.facultyCourses,
+  const courses = useResource<CourseListResponse>(
+    role === "admin" ? ROUTES_CYCLE_2.adminCourseHierarchy : ROUTES_CYCLE_2.facultyCourses,
   );
   const course = useMemo(
     () => (courses.data?.data ?? []).find((c) => c.id === courseId) ?? null,

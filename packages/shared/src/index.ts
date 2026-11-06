@@ -67,3 +67,5 @@ export * from "./transitionValidator.js";
 export * from "./analytics.js";
 
 export * from "./auditLog.js";
+
+export * from "./courses.js";

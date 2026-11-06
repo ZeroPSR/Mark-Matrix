@@ -68,6 +68,13 @@ export const ROUTES_CYCLE_2 = {
   facultyStudents: "/api/faculty/students",
   facultyEnrollments: "/api/faculty/enrollments",
 
+  // The admin's course list, with each course's semester hierarchy. The
+  // CRUD endpoint at `adminCourses` returns a flat row carrying only a
+  // `semesterId`, which is enough to list a course but not to address
+  // anything under it — the marks, attendance and lifecycle URLs all need
+  // the batch, program and semester ids.
+  adminCourseHierarchy: "/api/admin/courses/hierarchy",
+
   // Student
   studentEnrollment: "/api/student/enrollment",
 

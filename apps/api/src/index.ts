@@ -9,6 +9,7 @@ import { adminBatchesRoute } from "./routes/admin/batches.js";
 import { adminProgramsRoute } from "./routes/admin/programs.js";
 import { adminSemestersRoute } from "./routes/admin/semesters.js";
 import { adminCoursesRoute } from "./routes/admin/courses.js";
+import { adminCourseHierarchyRoute } from "./routes/admin/courseHierarchy.js";
 import { adminFacultyAssignmentsRoute } from "./routes/admin/facultyAssignments.js";
 import { adminEnrollmentsRoute } from "./routes/admin/enrollments.js";
 import { adminBulkEnrollRoute } from "./routes/admin/bulkEnroll.js";
@@ -67,12 +68,32 @@ const ALLOWED_ORIGINS: readonly string[] = [
   "https://mark-matrix-web.pages.dev",
   "https://mark-matrix-web.team-tractor.workers.dev",
 ];
+
+/**
+ * Is this a local development origin?
+ *
+ * The hostname is compared exactly, never by prefix: `startsWith("http://127.0.0.1")`
+ * also matches `http://127.0.0.1.evil.test`, and that is a hostname its owner
+ * can point at their own server — a page served from it would pass this check
+ * and be able to read API responses.
+ */
+function isLocalOrigin(origin: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+}
+
 app.use(
   "*",
   cors({
     origin: (origin) =>
-      (origin !== undefined && ALLOWED_ORIGINS.includes(origin)) ||
-      origin?.startsWith("http://127.0.0.1")
+      origin !== undefined &&
+      (ALLOWED_ORIGINS.includes(origin) || isLocalOrigin(origin))
         ? origin
         : "https://mark-matrix-web.pages.dev",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -92,6 +113,9 @@ app.route(API_ROUTES.adminUsers, adminUsersRoute);
 app.route(ROUTES_CYCLE_2.adminBatches, adminBatchesRoute);
 app.route(ROUTES_CYCLE_2.adminPrograms, adminProgramsRoute);
 app.route(ROUTES_CYCLE_2.adminSemesters, adminSemestersRoute);
+// Mounted BEFORE the courses CRUD, whose `GET /:id` would otherwise match
+// the literal id "hierarchy" and answer with a course-not-found.
+app.route(ROUTES_CYCLE_2.adminCourseHierarchy, adminCourseHierarchyRoute);
 app.route(ROUTES_CYCLE_2.adminCourses, adminCoursesRoute);
 app.route(ROUTES_CYCLE_2.adminStudents, adminStudentsRoute);
 app.route(ROUTES_CYCLE_2.adminFaculty, adminFacultyRoute);

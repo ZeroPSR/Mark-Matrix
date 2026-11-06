@@ -23,13 +23,17 @@ const requestedPaths = vi.hoisted(() => [] as string[]);
 vi.mock("../lib/api.js", () => ({
   apiFetch: vi.fn().mockImplementation((path: string) => {
     requestedPaths.push(path);
-    if (path === "/api/faculty/courses" || path === "/api/admin/courses") {
+    if (
+      path === "/api/faculty/courses" ||
+      path === "/api/admin/courses/hierarchy"
+    ) {
       return Promise.resolve({
         data: [
           {
             id: "c1",
             code: "CS101",
             title: "Intro to CS",
+            credits: 3,
             semester: { id: "s1", number: 1, programId: "p1", batchId: "b1" },
           },
         ],
@@ -84,7 +88,7 @@ describe("faculty roster endpoints", () => {
     expect(requestedPaths).toContain("/api/faculty/students");
     expect(requestedPaths).toContain("/api/faculty/courses");
     expect(requestedPaths).not.toContain("/api/admin/students");
-    expect(requestedPaths).not.toContain("/api/admin/courses");
+    expect(requestedPaths).not.toContain("/api/admin/courses/hierarchy");
     expect(requestedPaths.some((p) => p.startsWith("/api/admin/enrollments"))).toBe(false);
   });
 
@@ -93,7 +97,7 @@ describe("faculty roster endpoints", () => {
     await waitForEnrollments("/api/admin/enrollments");
 
     expect(requestedPaths).toContain("/api/admin/students");
-    expect(requestedPaths).toContain("/api/admin/courses");
+    expect(requestedPaths).toContain("/api/admin/courses/hierarchy");
     expect(requestedPaths).not.toContain("/api/faculty/students");
     expect(requestedPaths).not.toContain("/api/faculty/courses");
     expect(requestedPaths.some((p) => p.startsWith("/api/faculty/enrollments"))).toBe(false);
@@ -106,7 +110,7 @@ describe("faculty roster endpoints", () => {
     expect(requestedPaths).toContain("/api/faculty/students");
     expect(requestedPaths).toContain("/api/faculty/courses");
     expect(requestedPaths).not.toContain("/api/admin/students");
-    expect(requestedPaths).not.toContain("/api/admin/courses");
+    expect(requestedPaths).not.toContain("/api/admin/courses/hierarchy");
     expect(requestedPaths.some((p) => p.startsWith("/api/admin/enrollments"))).toBe(false);
   });
 });
