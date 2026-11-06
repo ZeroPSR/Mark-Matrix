@@ -10,6 +10,7 @@ export const colors = {
   warning:      "var(--color-warning)",
   error:        "var(--color-error)",
   backdrop:     "var(--color-backdrop)",
+  brandSurface: "var(--color-brand-surface)",
 } as const;
 
 export const type = {

@@ -11,6 +11,10 @@
   --color-warning:      #B07A1A;
   --color-error:        #8E2A2A;
   --color-backdrop:     color-mix(in srgb, var(--color-ink) 40%, transparent);
+  /* The brand mark's own surface. The mark is a light-and-purple render: its
+     white ribbon is legible on a dark surface and nearly invisible on paper,
+     so it always sits on this chip, in either theme. */
+  --color-brand-surface: #18161A;
 
   /* Type scale */
   --type-display: 32px/40px;

@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.js";
+import { BrandMark } from "../components/BrandMark/BrandMark.js";
 import { Button } from "../components/Button/Button.js";
 import { Field } from "../components/Field/Field.js";
 import { Input } from "../components/Input/Input.js";
@@ -30,6 +31,9 @@ export function LoginPage(): JSX.Element {
   return (
     <main className={styles["page"]}>
       <form onSubmit={onSubmit} className={styles["card"]}>
+        <div className={styles["brand"]}>
+          <BrandMark size={72} />
+        </div>
         <h1 className={styles["title"]}>Mark-Matrix</h1>
         <Field label="Email" htmlFor="email">
           <Input

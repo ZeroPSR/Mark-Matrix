@@ -58,8 +58,8 @@ function referencedVariables(): Set<string> {
 
 describe("tokens.ts mirrors tokens.css", () => {
   it("exposes every token group with the expected entry count", () => {
-    // 11 colours + 7 type-scale + 9 spacing + 2 radius + 1 motion + 3 breakpoints.
-    expect(Object.values(colors)).toHaveLength(11);
+    // 12 colours + 7 type-scale + 9 spacing + 2 radius + 1 motion + 3 breakpoints.
+    expect(Object.values(colors)).toHaveLength(12);
     expect(Object.values(type)).toHaveLength(7);
     expect(Object.values(space)).toHaveLength(9);
     expect(Object.values(radius)).toHaveLength(2);

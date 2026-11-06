@@ -15,6 +15,10 @@
   display: grid;
   gap: var(--space-3);
 }
+.brand {
+  display: flex;
+  margin-bottom: var(--space-1);
+}
 .title {
   font: 600 var(--type-h2) "Source Serif 4", Georgia, serif;
   margin: 0 0 var(--space-3);

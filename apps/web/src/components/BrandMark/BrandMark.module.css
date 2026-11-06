@@ -1,0 +1,21 @@
+/* apps/web/src/components/BrandMark/BrandMark.module.css */
+.chip {
+  display: inline-grid;
+  place-items: center;
+  width: var(--brand-mark-size);
+  height: var(--brand-mark-size);
+  border-radius: 8px;
+  overflow: hidden;
+  /* The mark's own surface — see --color-brand-surface in tokens.css. */
+  background: var(--color-brand-surface);
+  border: 1px solid var(--color-hairline);
+  flex: none;
+}
+.mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The mark is wider than it is tall; contain keeps it whole and lets the
+     chip's surface show above and below it. */
+  object-fit: contain;
+}
