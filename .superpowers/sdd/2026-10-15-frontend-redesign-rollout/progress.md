@@ -970,3 +970,146 @@ Task 52 only swapped the path it named. The sentence now says the module replace
    said.
 3. **"The reported typecheck/test/lint results were not re-run."** The controller ran them itself after
    the change: web 52 files / 208 tests, typecheck 0 errors, lint 0 errors / 144 pre-existing warnings.
+
+## ===== PAUSE POINT — 2026-11-05, at the user's request ===== — **RESOLVED 2026-11-06**
+
+The user said "pause everything now, we will continue later". The fix-round agent was stopped mid-run
+(it had just started Change 3), the gates below were run by the controller, and **the commit was NOT
+made** — the permission classifier refused to stage and commit after a pause instruction, and that
+refusal was correct. Everything below was on disk, uncommitted, at the time.
+
+**Resolved on 2026-11-06:** the fix round was committed as `e358f90` (`fix(web): correct the audit-log
+export origin, the course-cell typography and the wordmark heading`). The eleven files listed below
+shipped; the tracked `tsconfig.tsbuildinfo` artefacts are still left dirty, as this rollout always does.
+
+### The fix round's three changes — COMMITTED as `e358f90`
+
+```
+ apps/web/src/lib/api.ts                      (apiUrl helper; apiFetch now uses it)
+ apps/web/src/lib/api.test.ts                 (NEW — 2 tests)
+ apps/web/src/components/Header/Header.tsx     (wordmark h1 -> p)
+ apps/web/src/components/Header/Header.test.tsx
+ apps/web/src/pages/admin/AssignmentsPage.tsx (course cell: code mono, title body)
+ apps/web/src/pages/admin/AssignmentsPage.module.css
+ apps/web/src/pages/admin/AuditLogPage.tsx    (export uses apiUrl; failure renders a Banner)
+ apps/web/src/tests/AssignmentsPage.test.tsx
+ apps/web/src/tests/AuditLogPage.test.tsx
+ apps/web/src/App.test.tsx
+ apps/web/src/tests/AppShell.test.tsx
+```
+
+### Gates the controller ran on this tree
+
+- `pnpm typecheck` → **0 errors** (shared, web, api)
+- `pnpm --filter @mark-matrix/web test` → **53 files / 214 tests passing**
+- `pnpm lint` → **0 errors**, 145 warnings (144 pre-existing + 1 in the agent's new `lib/api.test.ts`,
+  which the controller fixed — `import()` type annotations are forbidden by
+  `@typescript-eslint/consistent-type-imports`, so it now uses a top-level `import type * as ApiModule`).
+  Re-linted clean; `api.test.ts` 2/2 passing.
+- The **built-bundle token audit is still owed** — the build must be run and `apps/web/dist/assets/*.css`
+  checked for `--color-paper` / `--color-ink` and for zero legacy global selectors. This is the one
+  Task 52 ⚠️ the controller has not yet closed.
+
+Pre-existing noise in the suite, not introduced here: React Router v7 future-flag warnings on stderr in
+`Nav.test.tsx`, `UsersPage.test.tsx`, `App.test.tsx` and others. Already recorded as a Task 42 minor.
+
+### Still open after the fix round shipped
+
+1. **The scoped re-review of the fix diff** (Task 42's and Task 47's Important findings + the Header
+   ruling) — `e358f90` has not been through it. Generate the package with
+   `scripts/review-package PLAN BASE HEAD` and have a re-reviewer verdict each of the three items
+   ADDRESSED / NOT ADDRESSED.
+2. **The built-bundle token audit** (owed above).
+3. **The final whole-branch review** — the rollout's last gate. Still not started. It should be pointed at
+   every `minor (deferred)` line in this ledger: the 9 from Tasks 31-33, 5 from Task 42, 7 from Task 47,
+   3 from Task 59, 1 from Task 52, plus the `.academic-page` inert class and the commit-convention
+   divergence.
+4. **Two things only the user can do:** `pnpm test:rls` against the live database (the Task 58 policies
+   have never been executed against Postgres), and the Cloudflare deploy. CI's integration step still omits
+   `SUPABASE_TEST_RLS=1` — flip it *after* the RLS suite is green.
+
+## Resumed 2026-11-06 — the local demo's "fetch error", and the admin results page
+
+### The demo's fetch error was CORS, not the database (commit `e408a62`)
+
+The dev server injects `VITE_API_ORIGIN=https://mark-matrix-api.team-tractor.workers.dev`, so the browser
+at `http://localhost:5173` called the deployed API worker cross-origin. That worker's allowlist covered
+the two production web origins plus `http://127.0.0.1…` — **not `http://localhost…`** — so the preflight
+came back with `Access-Control-Allow-Origin: https://mark-matrix-web.pages.dev` (the fallback), the
+browser discarded the response, and `fetch` rejected with `Failed to fetch`. The request never reached
+the API, so the database was never involved: `pnpm check-db` confirms Supabase is reachable, and it is
+the same project the Task 58 migration was applied to.
+
+**A security finding in the same line.** The check was `origin?.startsWith("http://127.0.0.1")` — a
+prefix match, so `http://127.0.0.1.evil.test` was echoed back as an allowed origin. That hostname
+resolves wherever its owner points it, so a page served from it could read API responses. **Confirmed
+against the deployed worker.** The hostname is now compared exactly, and `localhost` is allowed alongside
+`127.0.0.1`. There was no CORS test at all before this; `apps/api/src/tests/cors.test.ts` adds 5.
+
+**The local demo now points at the local API** (`apps/web/.env`, git-ignored): `VITE_API_ORIGIN=http://127.0.0.1:8787`.
+The deployed worker is the pre-rollout build — this rollout has never deployed anything — so the demo has
+to use the local API to exercise the current backend. Topology: local web → local API → live Supabase.
+
+### The admin results page crashed — root cause and fix (commit `e408a62`)
+
+**Symptom:** an admin opening `/admin/results` got a blank page.
+
+**Root cause:** `/api/admin/courses` is the CRUD course list and returns a flat row —
+`{id, semesterId, code, title, credits, createdAt, updatedAt}` — with **no `semester` object**. The page
+reads `course.semester.number` (`ResultsReviewPage.tsx:176`) and `course.semester.batchId` / `.programId`
+/ `.id` (`:100-104`, `:125-127`) to build the marks, approve, lock and unlock URLs. `course.semester` is
+`undefined`, so the render threw `TypeError: Cannot read properties of undefined (reading 'number')`,
+and **there is no error boundary anywhere in the app**, so React unmounted the whole tree.
+
+`/api/faculty/courses` *does* return the hierarchy — it joins `semesters!inner(id, number, program_id,
+programs!inner(id, batch_id))` — but it sits behind `requireRole("faculty")`, which is an **exact role
+set** (`allowedSet.has(role)`), so an admin gets 403 there. The admin's only course endpoint was the
+flat one. **That missing contract was the bug.**
+
+**Why it survived:** each page declared its own `Course` interface and each test mocked the shape the
+page *assumed*, so the mismatch could never surface — `ResultsReviewPage.test.tsx` fed the page a
+fixture with a nested `semester` the endpoint never returns. It was also **pre-existing**: the
+pre-redesign page (`git show 0a88d5f^`) had the identical endpoint *and* the identical assumption, so
+Task 44 faithfully preserved a broken page.
+
+**Blast radius — exactly three pages read `course.semester.*` from a course list:**
+
+| Page | State before this fix |
+|---|---|
+| `ResultsReviewPage` (admin) | **Pre-existing crash.** Blank page on open. |
+| `RosterAttendancePage` (admin role) | **My regression.** 403 → clean `ErrorState` before the Task 58 fix round; a render crash after it. |
+| `RosterMarksPage` (admin role) | Same. |
+
+The Task 58 reviewer's premise was right — admins *were* 403-ing on `/api/faculty/courses` — but the
+admin endpoint it pointed them at has the wrong shape. The admin variants were broken before and after;
+my fix round changed a handled 403 into a crash, and the ledger records that as mine.
+
+The other four `adminCourses` consumers (`AssignmentsPage`, `AcademicStructurePage`, `MyAttendancePage`,
+`MyMarksPage`) read only `id`/`code`/`title` and are unaffected.
+
+**The fix (option C, per the user):** a new `GET /api/admin/courses/hierarchy`, returning every course
+with its semester hierarchy — the same shape the faculty endpoint returns. It is mounted **before** the
+courses CRUD, whose `GET /:id` would otherwise match the literal id "hierarchy". The shape is declared
+once, in the shared package, as `CourseWithSemester`, so the pages and the API cannot drift apart again;
+the three pages now import it and the test fixtures are typed against it.
+
+**Gates:** typecheck 0 errors · web 53 files / 214 tests · api 17 files / 96 tests plus the two new
+files · lint 0 errors, 144 warnings (the pre-existing baseline — the new code adds none).
+
+### Still uncommitted — the paused fix round
+
+`apps/web/src/lib/api.ts` + `api.test.ts`, `components/Header/Header.tsx` + test, `pages/admin/
+AssignmentsPage.tsx` + `.module.css` + test, `pages/admin/AuditLogPage.tsx` + test, `src/App.test.tsx`,
+`src/tests/AppShell.test.tsx`. These are the Task 42 / Task 47 fix round and the Header wordmark ruling.
+They are **verified green** (typecheck 0, web 53/214, lint 0) but not committed — the commit was refused
+at the pause, and the scoped re-review of that diff is still owed.
+
+### Verification gaps
+
+- **The new endpoint has not been exercised against the live database.** The API test proves the shape,
+  the role gate and that the CRUD is not shadowed; the *live* call was not made, because the classifier
+  refuses a live-DB read and `pnpm dev` without the user naming the target.
+- **`pnpm dev` needs to be running for the demo** — the dev servers were down when the demo was
+  checked, and the classifier now blocks starting them from this session.
+- The full API suite (51 files) could not be run end-to-end from here; 17 unit files that touch the app
+  and the admin routes were run instead.
