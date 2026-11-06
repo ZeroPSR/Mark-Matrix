@@ -15,6 +15,10 @@ export default tseslint.config(
       // Planning-run scratch space (SDD ledgers, briefs, review packages).
       // Git-ignored and not project source.
       "**/.superpowers/**",
+      // Linked git worktrees are full checkouts of this repo, so linting
+      // them lints every file again — the stale ones left behind by an
+      // earlier plan had inflated the warning count five-fold.
+      "**/.claude/worktrees/**",
     ],
   },
   js.configs.recommended,
