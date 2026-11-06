@@ -4,6 +4,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Native widgets — select dropdowns, date pickers, scrollbars — are drawn
+   by the browser, not by the page, so they do not inherit our colours.
+   `color-scheme` is what tells the browser to draw them for the theme in
+   use; without it a select's open dropdown stays light in the dark theme. */
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
 html, body { margin: 0; padding: 0; }
 body {
   font: 400 var(--type-body) "IBM Plex Sans", system-ui, sans-serif;

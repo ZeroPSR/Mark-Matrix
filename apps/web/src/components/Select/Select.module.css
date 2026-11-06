@@ -20,3 +20,13 @@
   border-bottom: 2px solid var(--color-ink-blue);
   margin-bottom: -1px;
 }
+
+/* The open dropdown list is drawn by the browser, outside the page, so it
+   does not inherit the select's own colours. `color-scheme` on the theme
+   root gets the browser to draw it for the right theme; this pins the list
+   to the design system's surface and ink rather than the browser's idea of
+   "dark", which is a different grey. */
+.select option {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
