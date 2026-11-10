@@ -24,6 +24,9 @@ const rpcs: Array<{ fn: string; args: Record<string, unknown> }> = [];
 /** The table whose insert should fail, and the Postgres error it reports. */
 let failingTable: string | null = null;
 
+/** Tables a query matches no row of — a read that comes back empty. */
+const emptyTables = new Set<string>();
+
 function makeChain(table: string): Record<string, unknown> {
   let row: Record<string, unknown> | null = null;
   const chain: Record<string, unknown> = {};
@@ -43,10 +46,13 @@ function makeChain(table: string): Record<string, unknown> {
     updates.push({ table, row: u });
     return chain;
   };
-  const result = (): { data: unknown; error: unknown } =>
-    failingTable === table
-      ? { data: null, error: { code: "23505", message: "duplicate key value" } }
-      : { data: row, error: null };
+  const result = (): { data: unknown; error: unknown } => {
+    if (failingTable === table) {
+      return { data: null, error: { code: "23505", message: "duplicate key value" } };
+    }
+    if (emptyTables.has(table)) return { data: null, error: null };
+    return { data: row, error: null };
+  };
   chain["single"] = () => Promise.resolve(result());
   chain["maybeSingle"] = () => Promise.resolve(result());
   chain["then"] = (
@@ -100,6 +106,7 @@ beforeEach(() => {
   updates.length = 0;
   rpcs.length = 0;
   failingTable = null;
+  emptyTables.clear();
   mockCreateUser.mockResolvedValue({
     data: { user: { id: "new-user-1" } },
     error: null,
@@ -252,6 +259,27 @@ describe("POST /api/admin/users", () => {
     expect(body.error).toBe("duplicate");
     // The account must not survive — it could sign in with no identity.
     expect(mockDeleteUser).toHaveBeenCalledWith("new-user-1");
+  });
+
+  it("rolls back when the profile row was never made", async () => {
+    // The handle_new_user trigger makes the profile row when the auth
+    // account appears. If it did not run, the account would exist and be
+    // able to sign in, but with no profile and no role — and an update
+    // that matched nothing is not an error, so it has to be looked for.
+    asRole("admin");
+    emptyTables.add("profiles");
+    const res = await app.request("/api/admin/users", {
+      method: "POST",
+      headers: { ...AUTH, "content-type": "application/json" },
+      body: JSON.stringify(STUDENT),
+    }, env);
+
+    expect(res.status).toBe(500);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("profile_missing");
+    expect(mockDeleteUser).toHaveBeenCalledWith("new-user-1");
+    // The identity must not be written either — there is no profile for it.
+    expect(inserts.find((i) => i.table === "student_profiles")).toBeUndefined();
   });
 
   it("never writes the password into the audit trail", async () => {

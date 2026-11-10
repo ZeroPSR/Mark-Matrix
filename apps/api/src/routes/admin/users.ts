@@ -27,11 +27,23 @@ async function attachRoleIdentity(
   userId: string,
   d: CreateUser,
 ): Promise<MappedPgError | null> {
-  const { error: profileErr } = await service
+  const { data: profileRow, error: profileErr } = await service
     .from(PROFILE_TABLE)
     .update({ name: d.name, role: d.role })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("user_id, role")
+    .maybeSingle();
   if (profileErr) return mapPgError(profileErr);
+  if (profileRow === null) {
+    // The handle_new_user trigger did not make the profile row. The account
+    // would exist and be able to sign in, but with no role and no profile —
+    // and an update that matched nothing is not an error, so it has to be
+    // looked for.
+    return {
+      status: 500,
+      body: { error: "profile_missing" },
+    };
+  }
 
   if (d.role === "student") {
     if (d.rollNumber === undefined || d.admissionYear === undefined) {
