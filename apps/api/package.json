@@ -9,7 +9,7 @@
     "start": "wrangler dev",
     "build": "wrangler deploy --dry-run --outfile=dist/worker.mjs",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "test": "vitest run",
     "lint": "eslint ."
   },
