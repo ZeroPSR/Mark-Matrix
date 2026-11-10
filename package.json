@@ -29,6 +29,7 @@
     "deploy:api": "tsx scripts/deploy.ts --api",
     "deploy:web": "tsx scripts/deploy.ts --web",
     "deploy:secrets": "tsx scripts/deploy.ts --secrets",
+    "deploy:check": "tsx scripts/deploy.ts --check",
     "deploy": "tsx scripts/deploy.ts"
   },
   "devDependencies": {

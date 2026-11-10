@@ -205,7 +205,7 @@ function readWebApiOrigin(): string {
   return origin;
 }
 
-function run(label: string, args: string[], env: NodeJS.ProcessEnv): void {
+function run(label: string, args: string[], env: NodeJS.ProcessEnv, cwd?: string): void {
   console.log(`\n▸ ${label}`);
   // pnpm is a .cmd on Windows, and Node only runs a .cmd through a shell.
   // The arguments are joined into one command string: every one of them is a
@@ -213,7 +213,7 @@ function run(label: string, args: string[], env: NodeJS.ProcessEnv): void {
   // and joining them keeps Node from warning about an unescaped argument list.
   const command = ["pnpm", ...args].join(" ");
   const result = spawnSync(command, {
-    cwd: repoRoot,
+    cwd: cwd ?? repoRoot,
     stdio: "inherit",
     env,
     shell: true,
@@ -293,6 +293,42 @@ function putSecret(name: string, value: string, env: NodeJS.ProcessEnv): void {
 }
 
 /**
+ * Report which of the worker's secrets are bound, without changing anything.
+ *
+ * A worker missing them answers every authenticated request with a 500,
+ * and the front end reports that as "parse_failed" — so the question "which
+ * secrets does this worker have?" is worth being able to ask without
+ * deploying anything.
+ *
+ * The shape of the local value is reported too, never the value: a secret
+ * that is bound but empty looks identical to a good one from the outside,
+ * and an empty SUPABASE_URL is exactly what makes `createClient` throw
+ * "supabaseUrl is required.".
+ */
+function checkSecrets(env: NodeJS.ProcessEnv): void {
+  const wanted = workerSecrets();
+  const bound = boundSecretNames(env);
+  console.log("\n▸ worker secrets");
+  for (const secret of wanted) {
+    const state = bound.has(secret.name) ? "bound" : "MISSING";
+    const shape =
+      secret.value.length === 0
+        ? "local value is EMPTY"
+        : secret.value.startsWith("eyJ")
+          ? `local value looks like a JWT (${secret.value.length} chars)`
+          : `local value is ${secret.value.length} chars`;
+    console.log(`  ${secret.name.padEnd(26)} ${state.padEnd(8)} ${shape}`);
+  }
+  const missing = wanted.filter((s) => !bound.has(s.name));
+  if (missing.length > 0) {
+    console.log(
+      `\n  ${missing.length} secret(s) missing — every authenticated request ` +
+        "answers 500 until they are pushed.",
+    );
+  }
+}
+
+/**
  * Make sure the API worker has the Supabase secrets it needs.
  *
  * Secrets that are already bound are left alone: `wrangler secret put`
@@ -350,6 +386,31 @@ function main(): void {
     // worker answers every authenticated request with a 500.
     ensureSecrets(env, true);
     console.log("\nDone.");
+    return;
+  }
+
+  if (flags.includes("--check")) {
+    checkSecrets(env);
+    console.log("\nDone.");
+    return;
+  }
+
+  if (flags.includes("--tail")) {
+    // Stream the worker's logs. The API answers a 500 with a plain-text body
+    // and no clue in it; the reason is in the log.
+    console.log("\n▸ tailing the API worker (Ctrl-C to stop)\n");
+    run("API worker logs", ["exec", "wrangler", "tail", "--format", "pretty"], env, join(repoRoot, "apps", "api"));
+    return;
+  }
+
+  const wranglerAt = flags.indexOf("--wrangler");
+  if (wranglerAt !== -1) {
+    // A passthrough for the wrangler commands this script does not wrap —
+    // `versions view`, `deployments status`. Everything after the flag goes
+    // to wrangler in the API package.
+    const args = flags.slice(wranglerAt + 1);
+    if (args.length === 0) throw new Error("--wrangler needs a command, e.g. --wrangler versions view");
+    run("wrangler " + args.join(" "), ["exec", "wrangler", ...args], env, join(repoRoot, "apps", "api"));
     return;
   }
 
