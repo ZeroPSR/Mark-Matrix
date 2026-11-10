@@ -1,0 +1,18 @@
+/* apps/web/src/pages/admin/components/AddUserModal.module.css */
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+.error {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-error);
+  background: var(--color-surface-sunk);
+  color: var(--color-error);
+  font: var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+}
+.note {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font: var(--type-small) "IBM Plex Sans", system-ui, sans-serif;
+}

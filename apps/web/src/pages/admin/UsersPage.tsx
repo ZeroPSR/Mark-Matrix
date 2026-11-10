@@ -11,6 +11,7 @@ import { Table, type TableColumn } from "../../components/Table/Table.js";
 import { Pagination } from "../../components/Pagination/Pagination.js";
 import { Loading } from "../../components/Loading/Loading.js";
 import { ErrorState } from "../../components/ErrorState/ErrorState.js";
+import { AddUserModal } from "./components/AddUserModal.js";
 import styles from "./UsersPage.module.css";
 
 interface Profile {
@@ -47,6 +48,7 @@ export function UsersPage(): JSX.Element {
   const [search, setSearch] = useState<string>("");
   const [role, setRole] = useState<string>("");
   const [page, setPage] = useState<number>(1);
+  const [addOpen, setAddOpen] = useState<boolean>(false);
 
   const setRoleOnUser = async (userId: string, nextRole: "admin" | "faculty" | "student"): Promise<void> => {
     setBusy(userId);
@@ -129,7 +131,9 @@ export function UsersPage(): JSX.Element {
           options={ROLE_OPTIONS}
         />
         <div className={styles["actions"]}>
-          <Button variant="ghost" size="md">Add user</Button>
+          <Button variant="ghost" size="md" onClick={() => setAddOpen(true)}>
+            Add user
+          </Button>
         </div>
       </section>
       {profiles.loading ? (
@@ -146,6 +150,14 @@ export function UsersPage(): JSX.Element {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
+      <AddUserModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setAddOpen(false);
+          profiles.refetch();
+        }}
+      />
     </article>
   );
 }
