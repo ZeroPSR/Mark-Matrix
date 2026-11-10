@@ -1212,3 +1212,42 @@ gates re-run green afterwards.
 **The lesson:** `rmdir /s` on a tree containing junctions deletes the *targets*. `git worktree remove`
 is the right tool for worktrees, and when it fails on path length the fix is `core.longpaths=true`, not
 a recursive delete.
+
+## Deployment (2026-11-10) — the API is live, the web is the user's to run
+
+**Pushed:** `main` is on `github.com/ZeroPSR/Mark-Matrix` through `6506dd5`, with the deploy scripts in
+`2ca7242`.
+
+**The API worker is deployed and verified in production.** Version `84a58a00`, at
+`https://mark-matrix-api.team-tractor.workers.dev`. Confirmed against the live worker:
+
+- `/health` → `{"status":"ok"}`
+- the preflight from `http://localhost:5173` is **echoed** — the CORS fix is live, so the local demo
+  works against the deployed API as well as the local one
+- the preflight from `http://127.0.0.1.evil.test` is **refused** — the bypass is closed in production,
+  not just in source
+
+**The web Pages deploy could not be completed from here**, for two reasons worth keeping:
+
+1. **The token cannot do Pages operations.** `wrangler pages deploy` calls the account-level
+   `GET /client/v4/memberships`, which this Account API Token cannot read — it returns 400 / code 9106
+   ("Authentication failed"). The same token deploys Workers fine, which is why the API went out. A Pages
+   deploy needs `wrangler login` or a token with the membership permission.
+2. **The plugin's generated config shadows the app's.** For a Pages deploy, wrangler picks up
+   `apps/web/dist/wrangler.json` — the Worker config the Cloudflare Vite plugin generates from
+   `apps/web/wrangler.jsonc` — and Pages validation rejects it ("Configuration file for Pages projects
+   does not support \"assets\""). Moving that one file aside fixes it, and it is excluded from the upload
+   anyway by `dist/.assetsignore`.
+
+**The one thing that will silently break a manual deploy:** `apps/web/.env` points `VITE_API_ORIGIN` at
+`http://127.0.0.1:8787` for the local demo, and that value is **inlined into the bundle at build
+time**. A rebuild without overriding it ships a production site that calls localhost. The build
+currently in `apps/web/dist` was made with the override and is correct — zero `127.0.0.1:8787` and one
+`mark-matrix-api.team-tractor.workers.dev` in the bundle — but it must be rebuilt with
+
+```bash
+VITE_API_ORIGIN=https://mark-matrix-api.team-tractor.workers.dev pnpm --filter @mark-matrix/web build
+```
+
+if anything changes. The deploy scripts added in `2ca7242` (`pnpm run deploy:api`, `pnpm run
+deploy:web`) do not set it.
