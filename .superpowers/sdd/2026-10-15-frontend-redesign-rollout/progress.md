@@ -1251,3 +1251,47 @@ VITE_API_ORIGIN=https://mark-matrix-api.team-tractor.workers.dev pnpm --filter @
 
 if anything changes. The deploy scripts added in `2ca7242` (`pnpm run deploy:api`, `pnpm run
 deploy:web`) do not set it.
+
+### The web app is deployed too (commits `1fee5fa`, `30ca1c4`)
+
+**The frontend is now a Worker with static assets**, not a Pages project. `apps/web/wrangler.jsonc`
+drops `pages_build_output_dir` and declares:
+
+```jsonc
+"assets": { "directory": "./dist", "not_found_handling": "single-page-application" }
+```
+
+The `pages_build_output_dir` field had to go: it marks the project as a Pages project, and a Pages config
+cannot carry an `assets` block — so the config the Vite plugin generates from it failed Pages validation
+outright ("Configuration file for Pages projects does not support \"assets\""). The plugin's own rule is
+that a config with no `main` is an **assets-only** project, and it copies the app's `assets` block into
+the generated deploy config. So the app config now declares the assets directly and the generated
+`dist/wrangler.json` is a Worker config: `assets: {directory: ".", not_found_handling:
+"single-page-application"}`, no `pages_build_output_dir`, no `main`.
+
+**The fallback is what makes it work.** The live Workers deployment 404'd on `/admin/results` before this
+— a Worker serving static assets does not fall back to `index.html` on its own; the Pages deployment did
+that for us. With `not_found_handling: "single-page-application"` a deep link, a shared URL or a hard
+refresh reaches the client-side router instead of a 404.
+
+**Deployed and verified live** at `https://mark-matrix-web.team-tractor.workers.dev`, version
+`d789fef6`:
+
+- `/` → 200
+- `/admin/results` → **200 with index.html** (was 404 before)
+- `/favicon.png` → 200, image/png, 5,119 bytes — the new brand mark
+- the served bundle is the current one and points at
+  `https://mark-matrix-api.team-tractor.workers.dev`, with **zero** `127.0.0.1:8787` in it
+
+**Two claims that turned out to be wrong, recorded so they are not repeated:**
+
+- *"The copy of assets in `src/assets` is causing the errors."* It is not. Vite only emits assets that are
+  imported, and only `MarkMatrixMark.png` is imported — the build output holds that 26 KB file and not
+  the 1.3 MB original. The whole `dist` is 603 KB.
+- *"The frontend is pulling the asset from a non-set path."* The paths are absolute
+  (`/assets/index-<hash>.js`) and both live deployments served them 200. What 404'd was the **route**, not
+  an asset.
+
+**The Pages project is left on its previous build.** It still serves the app correctly, deep links and
+all; it just no longer receives deployments. The API's CORS allowlist covers both origins, so either
+works.
