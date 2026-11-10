@@ -1,14 +1,28 @@
 {
-  // Cloudflare Pages config for the React frontend.
+  // Cloudflare config for the React frontend.
   // Build output is produced by Vite; this file is consumed by @cloudflare/vite-plugin.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mark-matrix-web",
   "compatibility_date": "2025-09-23",
-  "pages_build_output_dir": "./dist",
+  // The Vite plugin deploys this as a Worker with static assets: the build
+  // output is apps/web/dist, served from the worker.
+  //
+  // `not_found_handling: "single-page-application"` is what makes a deep
+  // link — /admin/results, a shared URL, a hard refresh — serve index.html
+  // rather than 404. Without it the client-side router never gets to run.
+  // The Pages deployment this replaces did that for us; a Worker has to ask.
+  //
+  // `pages_build_output_dir` is gone deliberately: it marks the project as a
+  // Pages project, and a Pages config cannot carry an "assets" block — so
+  // the plugin's generated config failed Pages validation outright.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
   "observability": { "enabled": true },
   // Cycle 8c: VITE_API_ORIGIN is inlined into the build at compile time.
   // Paste the real API host. For now using the workers.dev URL the API
-  // was deployed to; replace with the custom domain when it's set up.
+  // was deployed to; replace with the custom domain when it is set up.
   "vars": {
     "VITE_API_ORIGIN": "https://mark-matrix-api.team-tractor.workers.dev"
   }

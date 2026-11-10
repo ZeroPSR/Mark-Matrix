@@ -27,7 +27,7 @@
     "test:integration": "pnpm -r test",
     "test:rls": "cross-env SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test",
     "deploy:api": "pnpm --filter @mark-matrix/api run deploy",
-    "deploy:web": "pnpm --filter @mark-matrix/web exec wrangler pages deploy ./dist --project-name mark-matrix-web"
+    "deploy:web": "pnpm --filter @mark-matrix/web exec wrangler deploy --config dist/wrangler.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
