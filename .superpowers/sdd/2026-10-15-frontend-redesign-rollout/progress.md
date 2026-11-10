@@ -1384,3 +1384,60 @@ bug.
 
 The API round-trip to Supabase is proven by the 401: the worker reached the project's auth server
 and was told the token was invalid. `pnpm check-db` also reports the project reachable.
+
+### "Add user" on the admin Users page did nothing (commits `d4153de`, `0713302`, `eddd72e`)
+
+The button was dead: [UsersPage.tsx](../../apps/web/src/pages/admin/UsersPage.tsx) rendered
+`<Button variant="ghost" size="md">Add user</Button>` with **no `onClick`**, no form, and no
+endpoint behind it. The rollout's Task 40 only ever asked for the button's *appearance* —
+"primary ghost 'Add user'" — and that is all it got. The test asserted the button exists; nothing
+asserted what it does.
+
+**There was no way to create a user anywhere in the app.** The role-satellite `POST` routes
+(`/api/admin/students`, `/api/admin/faculty`, `/api/admin/admins`) all take a `userId`, which only
+exists after the auth account does — and nothing creates the auth account. The front end never
+called those routes at all.
+
+**A user is three rows:**
+
+1. the auth account,
+2. the `profiles` row — made by the `handle_new_user` trigger, with the role **hardcoded to
+   'student'**,
+3. the role satellite that carries the identity (`student_profiles.roll_number`,
+   `faculty_profiles.employee_code`, …).
+
+The satellite's identity columns are **NOT NULL**, and the satellite rows are what the rosters
+join through — so a user without one is invisible to every faculty and admin roster. Nothing else
+in the app can fill them, which is why the create has to attach one.
+
+**What was built:**
+
+- `POST /api/admin/users` — creates the account with the service-role client, sets the profile
+  role (the trigger got it wrong), attaches the satellite, writes an audit entry. If the satellite
+  insert fails, the auth account is **rolled back** — left alone it could sign in with no
+  identity. The password never reaches the audit trail.
+- The required identity fields are decided by the role, and that rule lives in the **shared**
+  schema (`createUserSchema`), so the form and the API cannot disagree.
+- The front end: an `AddUserModal` with the role-driven fields, a failed creation keeping the
+  dialog open with what was already typed, and the server's field error landing on its field.
+
+**One guard worth its own commit:** the profile update reads the row back. An update that matched
+nothing is not an error, so if the `handle_new_user` trigger had not run, the endpoint would have
+carried on and written an identity row for a user that has no profile.
+
+### A typecheck that was checking stale types
+
+The API resolves `@mark-matrix/shared` through a project reference, so it reads
+`packages/shared/dist/*.d.ts`. Its typecheck was `tsc --noEmit`, which does **not** build the
+referenced project — so a change in the shared package left the API checking against the previous
+declarations. It surfaced as `has no exported member named 'createUserSchema'` while the export
+was plainly there.
+
+`tsc -b` builds the reference first. Verified by renaming an export in the shared package: the
+API's typecheck now fails on it, where before it did not. The web package already used `tsc -b`;
+the API now matches.
+
+**A trap for whoever runs the gates next:** `pnpm typecheck` does not rebuild the shared
+package's declarations. If you change the shared package and the API complains about an export
+that is right there, run `pnpm --filter @mark-matrix/shared exec tsc -b` — or just let the API's
+`tsc -b` do it.
