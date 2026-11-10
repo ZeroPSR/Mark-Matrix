@@ -41,3 +41,47 @@ describe("apiUrl", () => {
     expect(apiUrl("/api/admin/audit-log")).toBe("/api/admin/audit-log");
   });
 });
+
+describe("apiFetch", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("keeps the body when the response is not JSON", async () => {
+    // A plain-text answer — Hono's default "Internal Server Error", a proxy's
+    // HTML error page — used to arrive as the bare code "parse_failed", with
+    // the reason discarded.
+    vi.stubEnv("VITE_API_ORIGIN", "https://api.mark-matrix.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve("Internal Server Error"),
+      }),
+    );
+
+    const { apiFetch } = await loadApi();
+    await expect(apiFetch("/api/admin/batches")).rejects.toMatchObject({
+      status: 500,
+      body: { error: "parse_failed", detail: "Internal Server Error" },
+    });
+  });
+
+  it("parses a JSON body as before", async () => {
+    vi.stubEnv("VITE_API_ORIGIN", "https://api.mark-matrix.test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ data: [1, 2] })),
+      }),
+    );
+
+    const { apiFetch } = await loadApi();
+    await expect(apiFetch("/api/admin/batches")).resolves.toEqual({ data: [1, 2] });
+  });
+});

@@ -104,6 +104,32 @@ app.use(
 
 app.get("/health", (c) => c.json({ status: "ok", timestamp: new Date().toISOString() }));
 
+/**
+ * Every response this API sends is JSON.
+ *
+ * Hono's defaults are not: an unmatched path answers with a plain-text
+ * "404 Not Found", and an unhandled throw answers with a plain-text
+ * "Internal Server Error". The front end parses every response body as
+ * JSON, so a plain-text answer arrives there as the opaque string
+ * "parse_failed" — which says nothing about what actually went wrong.
+ *
+ * A missing worker secret used to hide exactly here: `getSupabase()` throws
+ * "supabaseUrl is required.", the auth middleware throws with it, and the
+ * browser saw "parse_failed" and blamed itself.
+ */
+app.notFound((c) => c.json({ error: "not_found" }, 404));
+
+app.onError((err, c) => {
+  // An HTTPException carries its own response — a 400 with a validation
+  // message, say. Hono's default handler passes those through; so does this.
+  if ("getResponse" in err && typeof err.getResponse === "function") {
+    const res = err.getResponse();
+    return c.newResponse(res.body, res);
+  }
+  console.error("unhandled API error", err);
+  return c.json({ error: "internal_error" }, 500);
+});
+
 app.use("/api/*", supabaseAuth);
 app.use("/api/*", generalRateLimit);
 app.get(API_ROUTES.me, (c) => c.json({ userId: c.get("userId"), role: c.get("role") }));

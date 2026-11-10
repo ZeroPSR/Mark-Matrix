@@ -44,7 +44,11 @@ export async function apiFetch<T>(
     try {
       body = JSON.parse(text);
     } catch {
-      body = { error: "parse_failed" };
+      // The body was not JSON. Keep what actually arrived rather than
+      // throwing it away: a plain-text "Internal Server Error", an HTML
+      // error page from a proxy, a truncated response. The code alone
+      // ("parse_failed") says nothing about which of those it was.
+      body = { error: "parse_failed", detail: text.slice(0, 300) };
     }
   }
   if (!res.ok) {
