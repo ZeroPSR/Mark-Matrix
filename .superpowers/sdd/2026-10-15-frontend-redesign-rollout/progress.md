@@ -1295,3 +1295,36 @@ refresh reaches the client-side router instead of a 404.
 **The Pages project is left on its previous build.** It still serves the app correctly, deep links and
 all; it just no longer receives deployments. The API's CORS allowlist covers both origins, so either
 works.
+
+### Deploying from the keys file, not from the shell (commit `972c17f`)
+
+The Cloudflare credentials live in `.keys/cloudflare.json` — `api_token` and `account_id`. They were
+being read from the shell's environment, and every terminal, IDE task runner and CI step has its own
+copy of that environment, so a token one of them had was a token the others did not. A deploy failed for
+reasons that had nothing to do with the deploy.
+
+`scripts/deploy.ts` reads the keys file itself and hands the token to wrangler on the child process.
+The token is never printed.
+
+```
+pnpm deploy          # the API worker and the web worker
+pnpm deploy --api    # the API worker only
+pnpm deploy --web    # the web worker only
+```
+
+**The web step builds first, with `VITE_API_ORIGIN` taken from `apps/web/wrangler.jsonc`.** That value
+is inlined into the bundle at build time, and `apps/web/.env` points it at the local dev API — so a
+build without the override ships a front end that calls localhost. Reading it from the app's wrangler
+config keeps one source of truth for the production origin.
+
+The JSONC reader is hand-rolled rather than pulled in as a dependency (the store had no
+`strip-json-comments` tarball and the machine is offline): the only subtlety is that the `//` in
+`https://` is not a comment, which means tracking whether we are inside a string.
+
+**Deployed from the script and verified live:** API version `45c894d0`, web version `a7a59740` —
+`/health` ok, `/` 200, `/admin/results` 200, `/favicon.png` 200 (5,119 bytes), and the served bundle
+points at the production API with zero `127.0.0.1:8787` in it.
+
+**A trap worth remembering:** `pnpm deploy --dry-run` does **not** reach the script — pnpm's own
+`deploy` command eats the flag, and the run that followed it deployed for real. `pnpm run deploy
+--dry-run` is the form that forwards it.
