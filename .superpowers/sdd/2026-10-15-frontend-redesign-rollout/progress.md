@@ -1328,3 +1328,59 @@ points at the production API with zero `127.0.0.1:8787` in it.
 **A trap worth remembering:** `pnpm deploy --dry-run` does **not** reach the script — pnpm's own
 `deploy` command eats the flag, and the run that followed it deployed for real. `pnpm run deploy
 --dry-run` is the form that forwards it.
+
+### "parse_failed" on the live site — the worker was missing its Supabase credentials (commits `bd76149`, `eabecfc`, `4004a30`)
+
+The live site showed **"parse_failed"** on every page. It is not a front-end bug: `parse_failed` is
+this app's own code, [apps/web/src/lib/api.ts:47](../../apps/web/src/lib/api.ts) sets it when
+`JSON.parse` throws on a response body that is not JSON.
+
+**The chain, end to end:**
+
+1. `apps/api/wrangler.jsonc` declares only `ENVIRONMENT`. The Supabase credentials are Worker
+   **secrets**, and the worker had none of them bound with a usable value.
+2. `getSupabase()` calls `createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)`. With an empty
+   `SUPABASE_URL`, supabase-js throws `supabaseUrl is required.`
+3. The throw happens inside the auth middleware, so **every request carrying an `Authorization`
+   header** answered **500**.
+4. Hono's default error handler answers an unhandled throw with a **plain-text**
+   `Internal Server Error` — not JSON.
+5. `apiFetch` parsed that plain text, caught it, and replaced the body with `{ error: "parse_failed" }`.
+   The page showed "parse_failed" and pointed at the front end.
+
+**The diagnosis that was wrong:** the secrets were *bound* — `wrangler secret list` showed all three
+names, and `wrangler versions view` showed them on the live version. What was wrong was their
+*value*: an earlier `wrangler secret put` had been fed an empty stdin, and Cloudflare had stored an
+empty string. A bound-but-empty secret looks identical to a good one from the outside, and an empty
+`SUPABASE_URL` fails exactly like a missing one.
+
+**Found by tailing the worker, not by reading the code.** The 500 body says nothing; the log says
+`Error: supabaseUrl is required.` `pnpm run deploy -- --tail` streams it.
+
+**The fix, and the shape of it:**
+
+- `pnpm run deploy:secrets` pushes `SUPABASE_URL`, `SUPABASE_ANON_KEY` and
+  `SUPABASE_SERVICE_ROLE_KEY` from `.keys/supabase.json` into the worker, on stdin, never on the
+  command line. A deploy now does this for any secret that is not already bound, **before** it
+  publishes the worker — so a fresh checkout cannot ship a worker that cannot reach the database.
+- `pnpm run deploy:check` reports which secrets are bound and the shape of the local value, without
+  changing anything.
+- `pnpm run deploy -- --wrangler <command>` reaches the wrangler commands the script does not wrap.
+
+**The second half of the fix is the error contract** (commit `bd76149`). The API now answers an
+unmatched path with `{"error":"not_found"}` and an unhandled throw with `{"error":"internal_error"}`,
+both as JSON — and `apiFetch` keeps the body it could not parse, as `detail`, so a page says what
+actually arrived instead of a bare "parse_failed". A missing secret should not present as a parsing
+bug.
+
+**Verified live after the push and the deploy:**
+
+| Request | Before | After |
+|---|---|---|
+| `GET /api/me` with any bearer token | 500 `text/plain` "Internal Server Error" | **401 `{"error":"invalid_session"}`** |
+| `GET /totally-unknown` | 404 `text/plain` "404 Not Found" | **404 `{"error":"not_found"}`** |
+| `GET /health` | 200 JSON | 200 JSON |
+| `/`, `/admin/results`, `/favicon.png` | 200 | 200 |
+
+The API round-trip to Supabase is proven by the 401: the worker reached the project's auth server
+and was told the token was invalid. `pnpm check-db` also reports the project reachable.
