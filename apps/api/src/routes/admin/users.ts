@@ -1,13 +1,82 @@
 import { Hono } from "hono";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   PROFILE_TABLE,
+  createUserSchema,
   formatZodError,
   patchRoleSchema,
+  type CreateUser,
 } from "@mark-matrix/shared";
 import type { AppEnv } from "../../env.js";
-import { mapPgError } from "../../lib/pgErrors.js";
+import { mapPgError, type MappedPgError } from "../../lib/pgErrors.js";
 import { recordAudit } from "../../lib/auditLog.js";
 import { getServiceRoleClient } from "../../lib/serviceRoleClient.js";
+
+/**
+ * Give a freshly created auth user their profile role and their identity.
+ *
+ * The `handle_new_user` trigger makes the `profiles` row with the role
+ * hardcoded to 'student', so the role is set here. The satellite row
+ * carries the identity fields — roll number, employee code — and its
+ * columns are NOT NULL: a user without one is invisible to the rosters.
+ *
+ * Returns null on success, or the error to answer with.
+ */
+async function attachRoleIdentity(
+  service: SupabaseClient,
+  userId: string,
+  d: CreateUser,
+): Promise<MappedPgError | null> {
+  const { error: profileErr } = await service
+    .from(PROFILE_TABLE)
+    .update({ name: d.name, role: d.role })
+    .eq("user_id", userId);
+  if (profileErr) return mapPgError(profileErr);
+
+  if (d.role === "student") {
+    if (d.rollNumber === undefined || d.admissionYear === undefined) {
+      return { status: 400, body: { error: "validation_failed" } };
+    }
+    const { error } = await service
+      .from("student_profiles")
+      .insert({
+        user_id: userId,
+        roll_number: d.rollNumber,
+        admission_year: d.admissionYear,
+      })
+      .select()
+      .single();
+    return error ? mapPgError(error) : null;
+  }
+
+  if (d.employeeCode === undefined) {
+    return { status: 400, body: { error: "validation_failed" } };
+  }
+  if (d.role === "faculty") {
+    const { error } = await service
+      .from("faculty_profiles")
+      .insert({
+        user_id: userId,
+        employee_code: d.employeeCode,
+        department: d.department ?? null,
+        designation: d.designation ?? null,
+      })
+      .select()
+      .single();
+    return error ? mapPgError(error) : null;
+  }
+
+  const { error } = await service
+    .from("admin_profiles")
+    .insert({
+      user_id: userId,
+      employee_code: d.employeeCode,
+      designation: d.designation ?? null,
+    })
+    .select()
+    .single();
+  return error ? mapPgError(error) : null;
+}
 
 export const adminUsersRoute = new Hono<AppEnv>()
   .get("/", async (c) => {
@@ -47,6 +116,62 @@ export const adminUsersRoute = new Hono<AppEnv>()
       return { ...r, email: emailByUserId.get(r.user_id) ?? null };
     });
     return c.json({ users: enriched });
+  })
+  .post("/", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = createUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "validation_failed", fields: formatZodError(parsed.error) },
+        400,
+      );
+    }
+    const d = parsed.data;
+    const service = getServiceRoleClient(c.env);
+
+    // The auth account. This is the one step that needs the service role:
+    // only it can create a user in auth.users.
+    const { data: created, error: createErr } = await service.auth.admin.createUser({
+      email: d.email,
+      password: d.password,
+      email_confirm: true,
+      user_metadata: { name: d.name },
+    });
+    if (createErr || created?.user == null) {
+      const message = createErr?.message ?? "unknown error";
+      console.error("admin users: auth create failed", message);
+      // A duplicate email is the admin's mistake, not a server fault.
+      const duplicate = /already|registered|exists|duplicate|taken/i.test(message);
+      return c.json(
+        { error: duplicate ? "email_taken" : "create_failed", detail: message },
+        duplicate ? 409 : 500,
+      );
+    }
+    const userId = created.user.id;
+
+    const failure = await attachRoleIdentity(service, userId, d);
+    if (failure !== null) {
+      // Roll the auth account back. Left alone, the account could sign in
+      // while having no identity — visible in no roster and missing a role.
+      const { error: cleanupErr } = await service.auth.admin.deleteUser(userId);
+      if (cleanupErr) {
+        console.error("admin users: rollback failed", cleanupErr.message);
+      }
+      return c.json(failure.body, failure.status);
+    }
+
+    // The password is never part of the audit entry.
+    await recordAudit(c.get("supabase"), {
+      action: "create",
+      entity: "user",
+      entityId: userId,
+      newValue: { name: d.name, email: d.email, role: d.role },
+    });
+
+    return c.json(
+      { data: { userId, name: d.name, email: d.email, role: d.role } },
+      201,
+    );
   })
   .patch("/:userId", async (c) => {
     const supabase = c.get("supabase");

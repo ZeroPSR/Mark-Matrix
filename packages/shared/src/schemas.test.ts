@@ -9,6 +9,7 @@ import {
   createStudentProfileSchema,
   createFacultyProfileSchema,
   createAdminProfileSchema,
+  createUserSchema,
   patchRoleSchema,
   bulkEnrollRowSchema,
   formatZodError,
@@ -162,6 +163,86 @@ describe("bulkEnrollRowSchema", () => {
   });
   it("rejects missing roll number", () => {
     expect(bulkEnrollRowSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("createUserSchema", () => {
+  const STUDENT = {
+    email: "new@example.com",
+    name: "New Student",
+    role: "student",
+    password: "not-a-real-password",
+    rollNumber: "23BCA014",
+    admissionYear: 2023,
+  };
+
+  it("accepts a student with their identity", () => {
+    expect(createUserSchema.safeParse(STUDENT).success).toBe(true);
+  });
+
+  it("lower-cases the email and upper-cases the roll number", () => {
+    const r = createUserSchema.safeParse({
+      ...STUDENT,
+      email: "  New@Example.COM ",
+      rollNumber: "  23bca014 ",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.email).toBe("new@example.com");
+      expect(r.data.rollNumber).toBe("23BCA014");
+    }
+  });
+
+  it("requires a roll number and an admission year for a student", () => {
+    const noRoll = createUserSchema.safeParse({ ...STUDENT, rollNumber: undefined });
+    expect(noRoll.success).toBe(false);
+    if (!noRoll.success) {
+      expect(noRoll.error.issues.some((i) => i.path.join(".") === "rollNumber")).toBe(true);
+    }
+
+    const noYear = createUserSchema.safeParse({ ...STUDENT, admissionYear: undefined });
+    expect(noYear.success).toBe(false);
+  });
+
+  it("requires an employee code for faculty and admin", () => {
+    for (const role of ["faculty", "admin"] as const) {
+      const r = createUserSchema.safeParse({
+        email: "x@example.com",
+        name: "X",
+        role,
+        password: "not-a-real-password",
+      });
+      expect(r.success).toBe(false);
+      if (!r.success) {
+        expect(r.error.issues.some((i) => i.path.join(".") === "employeeCode")).toBe(true);
+      }
+    }
+  });
+
+  it("does not demand a roll number from a faculty member", () => {
+    const r = createUserSchema.safeParse({
+      email: "x@example.com",
+      name: "X",
+      role: "faculty",
+      password: "not-a-real-password",
+      employeeCode: "EMP-01",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects a password shorter than eight characters", () => {
+    expect(createUserSchema.safeParse({ ...STUDENT, password: "short" }).success).toBe(false);
+  });
+
+  it("rejects a password longer than bcrypt's 72-byte limit", () => {
+    // bcrypt truncates there, so a longer password would be silently cut.
+    expect(createUserSchema.safeParse({ ...STUDENT, password: "a".repeat(73) }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects a malformed email", () => {
+    expect(createUserSchema.safeParse({ ...STUDENT, email: "not-an-email" }).success).toBe(false);
   });
 });
 
