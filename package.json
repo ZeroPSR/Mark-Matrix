@@ -26,8 +26,9 @@
     "db:seed:test-users": "tsx scripts/seed-test-users.ts",
     "test:integration": "pnpm -r test",
     "test:rls": "cross-env SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test",
-    "deploy:api": "pnpm --filter @mark-matrix/api run deploy",
-    "deploy:web": "pnpm --filter @mark-matrix/web run deploy"
+    "deploy:api": "tsx scripts/deploy.ts --api",
+    "deploy:web": "tsx scripts/deploy.ts --web",
+    "deploy": "tsx scripts/deploy.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
