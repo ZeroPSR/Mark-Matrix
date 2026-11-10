@@ -28,6 +28,7 @@
     "test:rls": "cross-env SUPABASE_TEST_RLS=1 pnpm --filter @mark-matrix/api test",
     "deploy:api": "tsx scripts/deploy.ts --api",
     "deploy:web": "tsx scripts/deploy.ts --web",
+    "deploy:secrets": "tsx scripts/deploy.ts --secrets",
     "deploy": "tsx scripts/deploy.ts"
   },
   "devDependencies": {
