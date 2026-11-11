@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
+    "dev": "wrangler dev --inspector-port 9230",
+    "start": "wrangler dev --inspector-port 9230",
     "build": "wrangler deploy --dry-run --outfile=dist/worker.mjs",
     "deploy": "wrangler deploy",
     "typecheck": "tsc -b",
