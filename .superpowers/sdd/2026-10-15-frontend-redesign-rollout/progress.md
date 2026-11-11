@@ -1441,3 +1441,34 @@ the API now matches.
 package's declarations. If you change the shared package and the API complains about an export
 that is right there, run `pnpm --filter @mark-matrix/shared exec tsc -b` — or just let the API's
 `tsc -b` do it.
+
+### Local development: `pnpm dev` was fighting itself over the inspector port (commit `a46dc1f`)
+
+Running the app locally failed with an error that pointed nowhere useful:
+
+```
+apps/api dev: X [ERROR] Unexpected server response: 404
+apps/api dev: Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76
+apps/api dev: [ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @mark-matrix/api@0.0.0 dev: `wrangler dev`
+Exit status 3221226505
+```
+
+**The cause:** `pnpm dev` starts the API's `wrangler dev` *and* the web's Cloudflare Vite plugin.
+Both of them start a workerd with `--inspector-addr=127.0.0.1:9229`. Whichever starts second
+finds the port taken — and the failure is indirect: wrangler's proxy opens a **WebSocket** to the
+inspector, lands on the *other* process, gets a 404 for a path it does not serve, and dies. The
+libuv assertion on Windows and the exit code 3221226505 are downstream of that.
+
+The API now takes `--inspector-port 9230`; the web's plugin keeps 9229 and falls back to 9231 if it
+must. Verified: API 8787 healthy, web 5173 serving, CORS preflight from `http://localhost:5173`
+answers 204, and `POST /api/admin/users` is live on the local API.
+
+**A trap that cost time:** stopping a background `pnpm dev` kills the task's shell but **not** the
+wrangler/vite children. They survive as orphans still holding ports, and a later `wrangler dev`
+finds the port taken and fails the same confusing way. When a port that should be free is not:
+
+```
+netstat -ano | grep LISTENING | grep -E ":517[0-9]|:878[0-9]|:922[0-9]"
+```
+
+then kill the owning process *tree* (`taskkill /PID <pid> /T /F`), not the leaf.
