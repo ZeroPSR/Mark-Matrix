@@ -113,15 +113,31 @@ export const adminUsersRoute = new Hono<AppEnv>()
       return c.json({ users: data });
     }
     const service = getServiceRoleClient(c.env);
-    const { data: authData, error: authErr } = await service.auth.admin.listUsers();
-    if (authErr) {
-      console.error("admin users: auth.users read failed", authErr.message);
-      // Non-fatal: return profiles without emails.
-      return c.json({ users: data });
-    }
+    // listUsers() answers one page — 50 by default. An account list longer
+    // than that would show every user past the first page without an email,
+    // so every page is read.
     const emailByUserId = new Map<string, string>();
-    for (const u of authData.users) {
-      if (u.email) emailByUserId.set(u.id, u.email);
+    const PER_PAGE = 200;
+    for (let page = 1; ; page += 1) {
+      let authData: { users: Array<{ id: string; email?: string }> };
+      try {
+        const result = await service.auth.admin.listUsers({ page, perPage: PER_PAGE });
+        if (result.error) {
+          // Non-fatal: keep whatever emails were read, and carry on without
+          // the rest.
+          console.error("admin users: auth.users read failed", result.error.message);
+          break;
+        }
+        authData = result.data;
+      } catch (err) {
+        // A network failure rejects rather than resolving with an error.
+        console.error("admin users: auth.users read failed", (err as Error).message);
+        break;
+      }
+      for (const u of authData.users) {
+        if (u.email) emailByUserId.set(u.id, u.email);
+      }
+      if (authData.users.length < PER_PAGE) break;
     }
     const enriched = (data ?? []).map((row) => {
       const r = row as { user_id: string; name: string; role: string };
