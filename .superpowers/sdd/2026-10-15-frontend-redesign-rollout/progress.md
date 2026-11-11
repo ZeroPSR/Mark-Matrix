@@ -1501,3 +1501,41 @@ and goes stale after a rename.
 
 **A trap:** the profile is fetched **once per user**, not on every token refresh — `onAuthStateChange`
 fires on refresh, and a `/api/me` per refresh would be a request per user per hour for nothing.
+
+### Dummy data, and the two bugs it found (commits `9c6a169`, `6663cb2`, `d7d58a2`)
+
+`pnpm seed:dummy` creates 100 students, 10 faculty and 2 admins with emails of the form
+`{AA}@{role}.matrix.com` — the local part is letters: a, b, … z, aa, ab, … dv — plus the structure
+the other flows need: a batch, a program, two semesters, six courses with exam types, faculty
+assignments, enrollments for all 100 students, two sessions of attendance and a set of draft marks.
+It writes to the database `.dev.vars` points at, which in this repository is the live project — so
+these are **real accounts on it**.
+
+The CSV fixtures in `scripts/dummy-data/` match the two import formats the app has:
+
+| File | Format | What it is for |
+|---|---|---|
+| `enroll-sem2.csv` | `roll_number` | the bulk-enroll upload; semester 2, which the seeder leaves empty, so all 100 enroll |
+| `enroll-sem2-with-errors.csv` | `roll_number` | an unknown roll number, a blank row and a duplicate — the error path |
+| `marks-cs101-midterm.csv` | `roll_number, exam_type, marks_obtained` | the faculty bulk-marks upload |
+| `users.csv` | the Add user form's fields | a reference table; there is no CSV import for users |
+
+**Two real bugs, both pre-existing, both found by running against the dummy data:**
+
+**1. Every analytics request answered 400.** The handlers read `req.param("s")` and
+`req.param("c")`, but the routes are mounted with `:semId` and `:courseId` — so the parameter was
+always undefined and the handler bailed before it queried anything. The semester summary said
+`missing_sem`; the three course reports said `missing_course`.
+
+**Why the tests missed it:** they mounted the sub-app under the names the *handlers* read, not the
+names the *real app* mounts. A test that builds its own app around a sub-route can agree with the
+handler and still disagree with production. The analytics tests now mount the way the app does,
+and `app.routes.test.ts` goes through the real app so the two cannot drift apart again.
+
+**2. The admin Users list showed a blank email for most users.** `auth.admin.listUsers()` answers
+one page — 50 by default — and the route merged the emails from that one page only. With 122
+accounts, 50 had an email and 72 did not. Every page is read now, and a failed read is still
+non-fatal.
+
+**A note on the seeder:** the enrollment is read through the shared CSV parser, so the fixture and
+the code path that consumes it cannot drift.
