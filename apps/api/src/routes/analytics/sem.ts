@@ -7,7 +7,10 @@ type Ctx = Context<AppEnv>;
 
 async function summary(c: Ctx): Promise<Response> {
   const supabase = c.get("supabase");
-  const semId = c.req.param("s");
+  // The param name the route is *mounted* with — see apps/api/src/index.ts.
+  // It has to match: `req.param("s")` is always undefined here, and every
+  // analytics request answers 400 missing_sem.
+  const semId = c.req.param("semId");
   if (!semId) return c.json({ error: "missing_sem" }, 400);
   const courses: SemSummaryRow[] = await getSemSummary(supabase, semId);
   return c.json({ courses });

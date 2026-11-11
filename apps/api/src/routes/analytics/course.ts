@@ -16,9 +16,15 @@ import type { AppEnv } from "../../env.js";
 
 type Ctx = Context<AppEnv>;
 
+/**
+ * The course id comes from the path the route is *mounted* with — see
+ * apps/api/src/index.ts. It has to match: `req.param("c")` is always
+ * undefined here, and every course-analytics request answers 400
+ * missing_course.
+ */
 async function passRate(c: Ctx): Promise<Response> {
   const supabase = c.get("supabase");
-  const courseId = c.req.param("c");
+  const courseId = c.req.param("courseId");
   if (!courseId) return c.json({ error: "missing_course" }, 400);
   const out: PassRateReport = await getPassRateForCourse(supabase, courseId);
   return c.json(out);
@@ -26,7 +32,7 @@ async function passRate(c: Ctx): Promise<Response> {
 
 async function toppers(c: Ctx): Promise<Response> {
   const supabase = c.get("supabase");
-  const courseId = c.req.param("c");
+  const courseId = c.req.param("courseId");
   if (!courseId) return c.json({ error: "missing_course" }, 400);
   const parsed = topLimitSchema.safeParse({ limit: c.req.query("limit") });
   if (!parsed.success) {
@@ -41,7 +47,7 @@ async function toppers(c: Ctx): Promise<Response> {
 
 async function attendanceShortage(c: Ctx): Promise<Response> {
   const supabase = c.get("supabase");
-  const courseId = c.req.param("c");
+  const courseId = c.req.param("courseId");
   if (!courseId) return c.json({ error: "missing_course" }, 400);
   const parsed = attendanceThresholdSchema.safeParse({ threshold: c.req.query("threshold") });
   if (!parsed.success) {

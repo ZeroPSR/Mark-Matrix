@@ -35,7 +35,10 @@ function mountAsAdmin(supabase: SupabaseClient): Hono<AppEnv> {
     await next();
   });
   app.route(
-    "/api/admin/batch/:b/program/:p/sem/:s/analytics",
+    // The same param names the real app mounts this with — see
+    // apps/api/src/index.ts. A test that mounts it differently hides a
+    // mismatch between the handler and the mount.
+    "/api/admin/batch/:batchId/program/:programId/sem/:semId/analytics",
     analyticsSemRoute,
   );
   return app;
