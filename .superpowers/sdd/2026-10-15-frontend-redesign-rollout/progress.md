@@ -1472,3 +1472,32 @@ netstat -ano | grep LISTENING | grep -E ":517[0-9]|:878[0-9]|:922[0-9]"
 ```
 
 then kill the owning process *tree* (`taskkill /PID <pid> /T /F`), not the leaf.
+
+### The header and the dashboard showed a UUID instead of the name (commits `ecc7e88`, `120b090`)
+
+**The symptom:** the top-right of the header, and the greeting on the dashboard, showed a long
+string — the user's id, a UUID.
+
+**Why:** the auth state had no name in it. `AuthContext` held `userId` and `role` and nothing else,
+so [AppShell.tsx](../../apps/web/src/shell/AppShell.tsx) passed `userName={userId}` and
+[DashboardPlaceholder.tsx](../../apps/web/src/pages/DashboardPlaceholder.tsx) rendered
+`Welcome, {userId}`. The UUID was the only name available.
+
+**Where the name comes from:** the `profiles` row. That is the authority on a user's name — an admin
+can rename a user through `PATCH /api/admin/users/:userId`, and that updates `profiles.name` and
+nothing else. The copy in the sign-up metadata (`raw_user_meta_data`) is whatever it was at sign-up
+and goes stale after a rename.
+
+**What was built:**
+
+- `GET /api/me` returns `{ userId, role, name }`, the name read from `profiles` through the
+  caller's own client so RLS scopes it to their row. A failed read answers with a null name rather
+  than an error: the caller already has a name from its session, and does not need the request to
+  succeed.
+- `AuthContext` gained `userName`. It starts from the session's copy — enough to render something
+  at once, and never a UUID — and is replaced by the profile's name when that arrives. With neither,
+  the part of the email before the `@` stands; the header falls back to "Account" only if even that
+  is missing.
+
+**A trap:** the profile is fetched **once per user**, not on every token refresh — `onAuthStateChange`
+fires on refresh, and a `/api/me` per refresh would be a request per user per hour for nothing.
