@@ -13,6 +13,7 @@ function mockAuth(overrides: Partial<AuthState> = {}): void {
   vi.mocked(useAuth).mockReturnValue({
     userId: null,
     role: null,
+    userName: null,
     loading: false,
     signIn: vi.fn(),
     signOut: vi.fn(),
@@ -25,16 +26,23 @@ beforeEach(() => {
 });
 
 describe("DashboardPlaceholder", () => {
-  it("greets the signed-in user and shows their role", () => {
-    mockAuth({ userId: "u1", role: "admin" });
+  it("greets the signed-in user by name and shows their role", () => {
+    mockAuth({ userId: "u1", role: "admin", userName: "Anita Rao" });
     render(<DashboardPlaceholder />);
 
-    expect(screen.getByRole("heading", { name: /welcome, u1/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /welcome, anita rao/i })).toBeInTheDocument();
     expect(screen.getByText("admin")).toBeInTheDocument();
     expect(screen.getByText(/signed in as a/i)).toBeInTheDocument();
   });
 
-  it("falls back to a generic greeting when there is no user id", () => {
+  it("never greets the user by their id", () => {
+    mockAuth({ userId: "u1", role: "admin", userName: "Anita Rao" });
+    render(<DashboardPlaceholder />);
+
+    expect(screen.queryByText(/welcome, u1/i)).not.toBeInTheDocument();
+  });
+
+  it("falls back to a generic greeting when there is no name", () => {
     mockAuth({ userId: null, role: "student" });
     render(<DashboardPlaceholder />);
 

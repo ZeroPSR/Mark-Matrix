@@ -12,7 +12,7 @@ import { useAuth } from "../auth/AuthContext.js";
 
 function mockAuth(auth: Partial<AuthState>): void {
   vi.mocked(useAuth).mockReturnValue({
-    userId: null, role: null, loading: false,
+    userId: null, role: null, userName: null, loading: false,
     signIn: vi.fn(), signOut: vi.fn(),
     ...auth,
   });

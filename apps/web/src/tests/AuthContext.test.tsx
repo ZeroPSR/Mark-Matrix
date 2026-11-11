@@ -22,12 +22,19 @@ vi.mock("../lib/supabase.js", () => ({
   },
 }));
 
+// The display name comes from the profile row, fetched from the API.
+const mockApiFetch = vi.fn();
+vi.mock("../lib/api.js", () => ({
+  apiFetch: (...args: unknown[]) => mockApiFetch(...args),
+}));
+
 function Probe(): JSX.Element {
   const auth = useAuth();
   return (
     <div>
       <span data-testid="userId">{auth.userId ?? "null"}</span>
       <span data-testid="role">{auth.role ?? "null"}</span>
+      <span data-testid="userName">{auth.userName ?? "null"}</span>
       <span data-testid="loading">{String(auth.loading)}</span>
       <button onClick={() => void auth.signIn("a@b.c", "pw")}>sign in</button>
       <button onClick={() => void auth.signOut()}>sign out</button>
@@ -40,7 +47,9 @@ beforeEach(() => {
   mockSignOut.mockReset();
   mockGetSession.mockReset();
   mockOnAuthStateChange.mockReset();
+  mockApiFetch.mockReset();
   mockGetSession.mockResolvedValue({ data: { session: null } });
+  mockApiFetch.mockResolvedValue({ userId: "u1", role: "admin", name: "Profile Name" });
 });
 
 describe("AuthContext", () => {
@@ -87,6 +96,116 @@ describe("AuthContext", () => {
     );
     await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
     expect(screen.getByTestId("role")).toHaveTextContent("null");
+  });
+
+  it("shows the name from the session's sign-up metadata", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: "u1",
+            email: "anita@example.com",
+            app_metadata: { role: "admin" },
+            user_metadata: { name: "Anita Rao" },
+          },
+        },
+      },
+    });
+    // The profile row carries no name — the session's copy stands.
+    mockApiFetch.mockResolvedValue({ userId: "u1", role: "admin", name: null });
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("userName")).toHaveTextContent("Anita Rao"));
+  });
+
+  it("falls back to the email's local part when the session has no name", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: { id: "u1", email: "anita@example.com", app_metadata: { role: "admin" } },
+        },
+      },
+    });
+    mockApiFetch.mockRejectedValue(new Error("offline"));
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("userName")).toHaveTextContent("anita"));
+  });
+
+  it("prefers the profile's name over the session's copy", async () => {
+    // The session's copy is whatever it was at sign-up; the profile row is
+    // what an admin's rename updates.
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: "u1",
+            email: "anita@example.com",
+            app_metadata: { role: "admin" },
+            user_metadata: { name: "Old Name" },
+          },
+        },
+      },
+    });
+    mockApiFetch.mockResolvedValue({ userId: "u1", role: "admin", name: "New Name" });
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("userName")).toHaveTextContent("New Name"));
+  });
+
+  it("keeps the session's name when the profile read fails", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: "u1",
+            email: "anita@example.com",
+            app_metadata: { role: "admin" },
+            user_metadata: { name: "Anita Rao" },
+          },
+        },
+      },
+    });
+    mockApiFetch.mockRejectedValue(new Error("offline"));
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("userName")).toHaveTextContent("Anita Rao"));
+  });
+
+  it("never shows the user's id as their name", async () => {
+    mockGetSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          user: {
+            id: "8f14e45f-ceea-467a-9c3a-1b2c3d4e5f60",
+            email: "anita@example.com",
+            app_metadata: { role: "admin" },
+          },
+        },
+      },
+    });
+    mockApiFetch.mockRejectedValue(new Error("offline"));
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("userName")).toHaveTextContent("anita"));
+    expect(
+      screen.getByTestId("userName").textContent,
+    ).not.toContain("8f14e45f");
   });
 
   it("signIn delegates to supabase", async () => {

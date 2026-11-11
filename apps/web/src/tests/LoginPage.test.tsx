@@ -27,6 +27,7 @@ function mockAuth(overrides: Partial<AuthState> = {}): void {
   vi.mocked(useAuth).mockReturnValue({
     userId: null,
     role: null,
+    userName: null,
     loading: false,
     signIn: mockSignIn,
     signOut: vi.fn(),

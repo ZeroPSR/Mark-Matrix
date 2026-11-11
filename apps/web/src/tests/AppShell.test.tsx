@@ -12,7 +12,7 @@ import { useAuth } from "../auth/AuthContext.js";
 
 function mockAuth(auth: Partial<AuthState>): void {
   vi.mocked(useAuth).mockReturnValue({
-    userId: null, role: null, loading: false,
+    userId: null, role: null, userName: null, loading: false,
     signIn: vi.fn(), signOut: vi.fn(),
     ...auth,
   });
@@ -27,6 +27,15 @@ describe("AppShell", () => {
     expect(screen.getByText("Mark-Matrix")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     expect(screen.getByText("admin")).toBeInTheDocument();
+  });
+
+  it("shows the user's name in the header, not their id", () => {
+    mockAuth({ userId: "8f14e45f-ceea-467a-9c3a-1b2c3d4e5f60", role: "admin", userName: "Anita Rao" });
+    render(<MemoryRouter><AppShell /></MemoryRouter>);
+    expect(screen.getByText("Anita Rao")).toBeInTheDocument();
+    expect(
+      screen.queryByText("8f14e45f-ceea-467a-9c3a-1b2c3d4e5f60"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows only Dashboard for a student", () => {

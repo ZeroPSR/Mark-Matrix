@@ -9,7 +9,7 @@ import loadingStyles from "../styles/loading.module.css";
 import styles from "./AppShell.module.css";
 
 export function AppShell(): JSX.Element {
-  const { role, userId, signOut } = useAuth();
+  const { role, userId, userName, signOut } = useAuth();
   const items = NAV_ITEMS.filter((i) => role !== null && i.roles.includes(role));
   const [theme, setTheme] = useState<Theme>(() => getStoredTheme() ?? "light");
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ export function AppShell(): JSX.Element {
     <div className={styles["shell"]}>
       <Header
         role={role}
-        userName={userId}
+        userName={userName ?? "Account"}
         onSignOut={onSignOut}
         onToggleTheme={onToggle}
         currentTheme={theme}

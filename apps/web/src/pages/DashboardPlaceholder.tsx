@@ -2,10 +2,10 @@ import { useAuth } from "../auth/AuthContext.js";
 import { PageTitle } from "../components/PageTitle/PageTitle.js";
 
 export function DashboardPlaceholder(): JSX.Element {
-  const { userId, role } = useAuth();
+  const { userName, role } = useAuth();
   return (
     <article>
-      <PageTitle eyebrow="Dashboard">Welcome, {userId ?? "there"}</PageTitle>
+      <PageTitle eyebrow="Dashboard">Welcome, {userName ?? "there"}</PageTitle>
       {role === null ? (
         <p>You are not signed in.</p>
       ) : (
