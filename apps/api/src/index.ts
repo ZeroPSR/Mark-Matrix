@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { API_ROUTES, ROUTES_CYCLE_2 } from "@mark-matrix/shared";
+import { API_ROUTES, PROFILE_TABLE, ROUTES_CYCLE_2 } from "@mark-matrix/shared";
 import { supabaseAuth } from "./middleware/auth.js";
 import { requireRole } from "./middleware/requireRole.js";
 import { generalRateLimit, bulkRateLimit } from "./middleware/rateLimit.js";
@@ -132,7 +132,28 @@ app.onError((err, c) => {
 
 app.use("/api/*", supabaseAuth);
 app.use("/api/*", generalRateLimit);
-app.get(API_ROUTES.me, (c) => c.json({ userId: c.get("userId"), role: c.get("role") }));
+app.get(API_ROUTES.me, async (c) => {
+  const supabase = c.get("supabase");
+  const userId = c.get("userId");
+  const role = c.get("role");
+  // The display name. The `profiles` row is the authority on it — an admin
+  // can rename a user, and that only updates `profiles.name`. The copy in
+  // the sign-up metadata is whatever it was at sign-up.
+  //
+  // Read through the caller's own client, so RLS scopes this to their row.
+  const { data, error } = await supabase
+    .from(PROFILE_TABLE)
+    .select("name")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    // A failed read has no trustworthy data: no name, and the caller falls
+    // back to the copy in its session.
+    console.error("me: profile read failed", error.message);
+    return c.json({ userId, role, name: null });
+  }
+  return c.json({ userId, role, name: data?.name ?? null });
+});
 
 app.use("/api/admin/*", requireRole("admin"));
 app.route(API_ROUTES.adminUsers, adminUsersRoute);

@@ -28,6 +28,20 @@ export interface HealthResponse {
 }
 
 /**
+ * GET /api/me — who the caller is.
+ *
+ * `name` is the display name from the `profiles` row, which is the
+ * authority on it: an admin can rename a user, and that only updates
+ * `profiles.name`. The copy in the sign-up metadata is whatever it was at
+ * sign-up. It is null when the profile row cannot be read.
+ */
+export interface MeResponse {
+  userId: string;
+  role: Role;
+  name: string | null;
+}
+
+/**
  * Two parallel hierarchies model the academic structure of Mark-Matrix:
  *
  *   batch/program/sem/course/{attendance, marks}    — per-course inputs
